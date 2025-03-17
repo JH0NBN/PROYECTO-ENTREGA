@@ -1,0 +1,542 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Ajustar posición de cada sección */
+.section {
+    display: none;
+    position: relative;
+    padding-top: 60px;
+}
+
+.section.active {
+    display: block;
+}
+
+/* login y registro */
+.login-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 350px;
+    position: relative;
+    margin: 100px auto; 
+}
+
+.logo {
+    width: 80px;
+    margin-bottom: 15px;
+}
+
+h2 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Mantener el diseño de los formularios */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+label {
+    font-size: 14px;
+    color: #555;
+    text-align: left;
+}
+
+input {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Botones */
+button {
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #555;
+}
+
+/* Mensajes de error */
+.error-message {
+    color: red;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.hidden {
+    display: none;
+}
+
+.section {
+    display: none; /* Ocultar todas por defecto */
+}
+
+.section.active {
+    display: block; /* Mostrar la activa */
+}
+
+/* Enlace de registro */
+.register-link {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.register-link a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
+
+/* Estilos principales */
+body {
+    background: #f5f5f5;
+    color: #333;
+}
+
+/* Barra de navegación superior */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.logo img {
+    width: 100px;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: #555;
+}
+
+.logout-btn {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.logout-btn:hover {
+    background: #555;
+}
+
+/* Contenido principal */
+.main-content {
+    padding: 100px 20px 20px;
+}
+
+.section {
+    display: none;
+}
+
+.section.active {
+    display: block;
+}
+
+/* Estilos para el título "Crear Nueva Tarea" */
+#crear-tarea h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Estilos para el formulario de tareas */
+.task-form {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Cuadrícula para organizar los campos */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+/* Estilos para cada grupo de campos */
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 100%;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 5px;
+}
+
+/* Estilos para el botón de guardar */
+.task-form button[type="submit"] {
+    grid-column: span 2;
+    margin-top: 20px;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.task-form button[type="submit"]:hover {
+    background: #555;
+}
+
+.back-btn {
+    position: fixed; 
+    top: 150px; 
+    left: 20px; 
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    background: #777;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+    z-index: 1000; 
+}
+
+.back-btn:hover {
+    background: #999;
+}
+
+/* Estilos para la sección de Ver Tareas */
+#tareas {
+    max-width: 1200px; /* Ancho máximo para la sección */
+    margin: 0 auto; /* Centrar la sección */
+    padding: 20px;
+}
+
+/* Estilos para la tabla de tareas */
+#tareas table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#tareas th, #tareas td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#tareas th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    color: #333;
+}
+
+#tareas tr:hover {
+    background-color: #f9f9f9;
+}
+
+#tareas h1 {
+    text-align: center;
+    margin-top: 40px;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Estilos para centrar el contenido en el inicio */
+#inicio {
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
+    margin-bottom: 20px;
+}
+
+/* Estilos para los botones en el inicio */
+.botones-inicio {
+    margin-top: 20px;
+}
+
+.botones-inicio button {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.botones-inicio button:hover {
+    background: #555;
+}
+
+/* Estilos para el formulario de reasignar tarea */
+#reasignar-tarea .task-form {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#reasignar-tarea h1 {
+    text-align: center;
+    margin-top: 20px; /* Espacio adicional arriba del título */
+    margin-bottom: 30px; /* Espacio entre el título y el formulario */
+    font-size: 24px;
+    color: #333;
+}
+
+#reasignar-tarea .form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+#reasignar-tarea .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+#reasignar-tarea .form-group label {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+#reasignar-tarea .form-group input,
+#reasignar-tarea .form-group select,
+#reasignar-tarea .form-group textarea {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 100%;
+}
+
+#reasignar-tarea .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+#reasignar-tarea button[type="submit"] {
+    margin-top: 20px;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+#reasignar-tarea button[type="submit"]:hover {
+    background: #555;
+}
+
+/* Estilos para la sección de Detalles de la Tarea */
+#detalles-tarea {
+    max-width: 800px;
+    margin: 80px auto 20px; /* Margen superior de 80px para separar del navbar */
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#detalles-tarea h1 {
+    text-align: center;
+    margin-top: 0; /* Eliminamos el margen superior del título */
+    margin-bottom: 30px;
+    font-size: 24px;
+    color: #333;
+}
+
+#detalles-tarea .task-form {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #ddd; /* Borde superior */
+}
+
+#detalles-tarea .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 10px; /* Padding interno para evitar que el contenido se salga */
+}
+
+#detalles-tarea .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+#detalles-tarea .form-group label {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+#detalles-tarea .form-group input,
+#detalles-tarea .form-group textarea {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 100%;
+    background-color: #f9f9f9; /* Fondo gris claro para campos de solo lectura */
+    cursor: not-allowed; /* Cambiar cursor para indicar que no es editable */
+}
+
+#detalles-tarea .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Estilos para el historial de cambios */
+.historial-contenido {
+    margin-top: 40px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #ddd; /* Borde superior */
+}
+
+.historial-contenido h2 {
+    text-align: center;
+    margin-top: 30px;
+    margin-bottom: 20px;
+    font-size: 20px;
+    color: #333;
+}
+
+.historial-contenido table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.historial-contenido th,
+.historial-contenido td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.historial-contenido th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    color: #333;
+}
+
+.historial-contenido tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Estilos para la sección de Inicio */
+#inicio {
+    text-align: center;
+    padding: 20px;
+    margin-top: 80px; /* Margen superior para separar del navbar */
+    margin-bottom: 20px;
+}
+
+/* Estilos para los botones en el inicio */
+.botones-inicio {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center; /* Centrar las imágenes horizontalmente */
+    gap: 40px; /* Espacio entre las imágenes */
+}
+
+.botones-inicio a {
+    text-decoration: none; /* Eliminar subrayado de los enlaces */
+}
+
+.botones-inicio img {
+    width: 200px; /* Tamaño de las imágenes */
+    cursor: pointer;
+    transition: transform 0.3s ease; /* Efecto de escala al pasar el mouse */
+}
+
+.botones-inicio img:hover {
+    transform: scale(1.1); /* Escalar ligeramente las imágenes al pasar el mouse */
+}
