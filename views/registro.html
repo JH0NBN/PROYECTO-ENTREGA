@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registro - SistemasHIC</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/styles.css">  <!-- ruta corregida :contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3} -->
+</head>
+<body>
+  <div class="auth-container">
+    <aside class="auth-image"></aside>
+
+    <section class="auth-form-section">
+      <img src="/images/logoHic.png" alt="FCV Logo" class="auth-logo">
+      <h1 class="auth-title">Registro de Usuario</h1>
+      <p class="auth-subtitle">Crea tu cuenta</p>
+
+      <form id="formRegistro" class="auth-form" novalidate>
+        <div id="registroError" class="auth-error"></div>
+
+        <div class="form-group">
+          <label for="regUsername">Nombre de usuario</label>
+          <input type="text" id="regUsername" name="username" placeholder="Usuario" required>
+        </div>
+
+        <div class="form-group">
+          <label for="regPassword">Contraseña</label>
+          <div class="password-wrapper">
+            <input type="password" id="regPassword" name="password" placeholder="********" required>
+            <button type="button" class="toggle-password">
+              <span class="material-icons">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Repetir Contraseña</label>
+          <div class="password-wrapper">
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="********" required>
+            <button type="button" class="toggle-password">
+              <span class="material-icons">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Registrarse</button>
+        <p class="auth-link">¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+      </form>
+    </section>
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

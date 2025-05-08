@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - SistemasHIC</title>
+
+  <!-- Estilos principales -->
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/dashboard-enhancements.css" />
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+</head>
+<body>
+  <!-- =========================
+       Top Navigation
+  ========================= -->
+  <header class="top-nav">
+    <div class="top-nav-left">
+      <img src="/images/logosnavbar.png" alt="Logo HIC" class="logo" />
+    </div>
+    <div class="top-nav-right">
+      <!-- Notificaciones -->
+      <div id="notif-icon" class="nav-item notification">
+        <span class="material-icons">notifications</span>
+        <span class="nav-label">Notificaciones</span>
+        <span id="notif-badge" class="badge"></span>
+      </div>
+      <ul id="notif-dropdown" class="profile-menu hidden"></ul>
+
+      <!-- Perfil -->
+      <div class="nav-item profile">
+        <span class="material-icons profile-icon">account_circle</span>
+        <span class="nav-label">Usuario</span>
+        <div id="user-dropdown" class="profile-menu">
+          <button class="dropdown-item">
+            <span class="material-icons">mail</span>Firma Correo
+          </button>
+          <button class="dropdown-item">
+            <span class="material-icons">devices</span>Dispositivos Vinculados
+          </button>
+          <button id="btnCerrarSesion" class="dropdown-item">
+            <span class="material-icons">logout</span>Cerrar Sesión
+          </button>
+        </div>
+      </div>
+
+      <!-- Ayuda -->
+      <div class="nav-item help">
+        <span class="material-icons">help_outline</span>
+        <span class="nav-label">Ayuda</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- =========================
+         Sidebar
+    ========================= -->
+    <aside class="side-nav">
+      <h2 class="sidebar-title">Sistemas HIC</h2>
+      <div class="sidebar-links-card">
+        <h3 class="sidebar-subtitle">Accesos Directos</h3>
+        <div class="sidebar-buttons">
+          <button class="sidebar-btn" onclick="mostrarSeccion('inicio')">
+            <span class="material-icons">home</span><span>Inicio</span>
+          </button>
+          <button class="sidebar-btn" onclick="mostrarSeccion('crear-tarea')">
+            <span class="material-icons">add</span><span>Agregar Tarea</span>
+          </button>
+          <button class="sidebar-btn" onclick="mostrarSeccion('tareas')">
+            <span class="material-icons">list</span><span>Ver Tareas</span>
+          </button>
+          <button class="sidebar-btn" onclick="mostrarSeccion('control-usuario')">
+            <span class="material-icons">manage_accounts</span><span>Control Usuario</span>
+          </button>
+          <button class="sidebar-btn" onclick="mostrarSeccion('informes')">
+            <span class="material-icons">insert_chart</span><span>Informes</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =========================
+         Main Content
+    ========================= -->
+    <main class="main-content">
+
+      <!-- ============
+           INICIO
+      ============ -->
+      <section id="inicio" class="section active">
+        <!-- Banner -->
+        <div class="center-panel">
+          <img src="/images/images.png" alt="Banner Institucional" />
+        </div>
+
+        <!-- Aplicaciones Frecuentes -->
+        <section class="apps-card">
+          <div class="apps-card-header">
+            <h2>Aplicaciones Frecuentes</h2>
+            <div class="apps-search">
+              <input type="text" placeholder="Buscar Aplicación" />
+              <span class="material-icons">search</span>
+            </div>
+          </div>
+          <div class="apps-grid">
+            <a href="http://www.fcv.org/HelpDesk/" class="app-cell" target="_blank" rel="noopener">
+              <img src="/images/helpdesk.png" alt="HelpDesk" /><span>HelpDesk</span>
+            </a>
+            <a href="https://glpi.fcv.org/" class="app-cell" target="_blank" rel="noopener">
+              <img src="/images/glpi.png" alt="Glpi" /><span>Glpi</span>
+            </a>
+            <a href="https://webmail.fcv.org/" class="app-cell" target="_blank" rel="noopener">
+              <img src="/images/zimbra.png" alt="Zimbra" /><span>Zimbra</span>
+            </a>
+            <a href="https://sgi.almeraim.com/sgi/?redirect=true&conid=sgifcv" class="app-cell" target="_blank" rel="noopener">
+              <img src="/images/almera.png" alt="Almera" /><span>Almera</span>
+            </a>
+            <a href="http://www.fcv.org/informes" class="app-cell" target="_blank" rel="noopener">
+              <img src="/images/informes.png" alt="Informes" /><span>Informes</span>
+            </a>
+          </div>
+        </section>
+      </section>
+
+      <!-- =========================
+           VER TAREAS
+      ========================= -->
+      <section id="tareas" class="section hidden">
+        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+        <h1>Lista de Tareas</h1>
+        <form class="filtros">
+          <div class="filtros-campos">
+            <input type="text" id="filtro-titulo" placeholder="Nombre de la tarea" />
+            <input type="text" id="filtro-ticket" placeholder="Ticket" />
+            <input type="text" id="filtro-placa" placeholder="Placa" />
+            <select id="filtro-analista"><option value="">Todos los analistas</option></select>
+            <select id="filtro-estado">
+              <option value="">Todos los estados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Progreso">En Progreso</option>
+              <option value="Finalizado">Finalizado</option>
+            </select>
+            <input type="date" id="filtro-fecha-inicio" />
+            <input type="date" id="filtro-fecha-fin" />
+            <div class="filtros-botones">
+              <button id="btnAplicarFiltros">Aplicar filtros</button>
+              <button id="btnLimpiarFiltros">Limpiar filtros</button>
+            </div>
+          </div>
+        </form>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Título</th><th>Analista</th><th>Fecha y Hora</th><th>Estado</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="listaTareas"></tbody>
+          </table>
+        </div>
+      </section>
+
+<!-- =========================
+     CREAR TAREA
+========================= -->
+<section id="crear-tarea" class="section hidden">
+  <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+  <h1>Crear Nueva Tarea</h1>
+  <form id="formTarea" class="task-form">
+    <!-- Cada campo en su propio bloque -->
+    <div class="form-group">
+      <label for="titulo">Título:</label>
+      <input type="text" id="titulo" name="titulo" placeholder="Escribe el título" required>
+    </div>
+
+    <div class="form-group">
+      <label for="descripcion">Descripción:</label>
+      <textarea id="descripcion" name="descripcion" rows="3" placeholder="Describe la tarea" required></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="fechaHora">Fecha y Hora:</label>
+      <input type="datetime-local" id="fechaHora" name="fechaHora" required>
+    </div>
+
+    <div class="form-group">
+      <label for="analista">Analista:</label>
+      <select id="analista" name="analista" required>
+        <option value="">Seleccione un analista</option>
+        <!-- opciones dinámicas -->
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="fechaLimite">Fecha Límite:</label>
+      <input type="date" id="fechaLimite" name="fechaLimite" required>
+    </div>
+
+    <div class="form-group">
+      <label for="ticket">Ticket:</label>
+      <input type="text" id="ticket" name="ticket" placeholder="Número de ticket">
+    </div>
+
+    <div class="form-group">
+      <label for="placa">Placa:</label>
+      <input type="text" id="placa" name="placa" placeholder="Placa del vehículo">
+    </div>
+
+    <div class="form-group">
+      <label for="observacion">Observación:</label>
+      <textarea id="observacion" name="observacion" rows="2" placeholder="Comentarios adicionales"></textarea>
+    </div>
+
+    <button type="submit">Guardar Tarea</button>
+  </form>
+</section>
+
+
+<!-- =========================
+     CONTROL USUARIO
+========================= -->
+<section id="control-usuario" class="section hidden">
+  <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+  <h1>Control de Usuarios</h1>
+
+  <!-- Tabla de usuarios -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="listaUsuarios">
+        <!-- Se rellena dinámicamente con JS -->
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- =========================
+     INFORMES
+========================= -->
+<section id="informes" class="section hidden">
+  <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+  <h1>Generar Informe de Tareas</h1>
+
+  <form id="formInformes" class="task-form">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="informe-fecha-inicio">Fecha Inicio:</label>
+        <input type="date" id="informe-fecha-inicio" name="fechaInicio" required>
+      </div>
+      <div class="form-group">
+        <label for="informe-fecha-fin">Fecha Fin:</label>
+        <input type="date" id="informe-fecha-fin" name="fechaFin" required>
+      </div>
+      <div class="form-group">
+        <label for="informe-analista">Analista:</label>
+        <select id="informe-analista" name="analista">
+          <option value="">Todos los analistas</option>
+          <!-- opciones dinámicas -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="informe-estado">Estado:</label>
+        <select id="informe-estado" name="estado">
+          <option value="">Todos los estados</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="En Progreso">En Progreso</option>
+          <option value="Finalizado">Finalizado</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit">Descargar Excel</button>
+  </form>
+</section>
+
+  <!-- Scripts -->
+  <script src="/js/script.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

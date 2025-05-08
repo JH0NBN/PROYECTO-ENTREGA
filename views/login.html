@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Portal de Colaboradores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Roboto + Material Icons -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <!-- Nuestro CSS -->
+  <link rel="stylesheet" href="/css/styles.css">  <!-- ruta corregida :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1} -->
+</head>
+<body>
+  <div class="auth-container">
+    <aside class="auth-image"></aside>
+    <section class="auth-form-section">
+      <img src="/images/logoHic.png" alt="FCV Logo" class="auth-logo">
+      <h1 class="auth-title">Entrega de Turnos HIC</h1>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <div id="loginError" class="auth-error"></div>
+        <p class="auth-subtitle">Accede a tu cuenta</p>
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input type="text" id="username" name="username" placeholder="Ingresa tu usuario" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" name="password" placeholder="********" required>
+            <button type="button" class="toggle-password">
+              <span class="material-icons">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Ingresar</button>
+        <p class="auth-link">¿No tienes cuenta? <a href="registro.html">Regístrate</a></p>
+      </form>
+    </section>
+  </div>
+
+  <script src="/login.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
