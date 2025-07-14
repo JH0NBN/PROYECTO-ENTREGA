@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
     // Cerrar sesión
     document.getElementById("logout")?.addEventListener("click", () => {
-      localStorage.removeItem("user");
+      sessionStorage.removeItem("user");
       location.href = 'login.html';
     });
   
