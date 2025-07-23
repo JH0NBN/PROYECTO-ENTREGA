@@ -437,8 +437,14 @@ app.get('/tareas', async (req, res) => {
 
 // — Obtener detalle de tarea
 app.get('/tareas/:id', async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: 'ID de tarea inválido o no proporcionado' });
+  }
+
   try {
-    const t = await Tarea.findById(req.params.id).lean();
+    const t = await Tarea.findById(id).lean();
     if (!t) return res.status(404).json({ error: 'Tarea no encontrada' });
     return res.json(t);
   } catch (err) {
@@ -446,7 +452,6 @@ app.get('/tareas/:id', async (req, res) => {
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 });
-
 // — Crear tarea
 app.post('/tareas', async (req, res) => {
   const {

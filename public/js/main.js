@@ -570,7 +570,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       alert("✅ Fecha límite ampliada correctamente.");
       cerrarFormularioAmpliarFecha();
-      cargarTareas(); // O mostrarTareasPaginadas(), si aplica
+      cargarTareas();
+
+      const seccionDetalles = document.querySelector(
+        "#detalles-tarea.section.active"
+      );
+      if (seccionDetalles) {
+        verDetallesTarea(tareaSeleccionada);
+      }
     } catch (err) {
       console.error("❌ Error al ampliar fecha:", err);
       alert("Error al conectar con el servidor.");
