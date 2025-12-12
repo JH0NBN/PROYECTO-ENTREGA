@@ -29,9 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (currentUser.id && isAuthPage) {
     return void (window.location.href = "index.html");
   }
-  setInterval(() => {
-    location.reload();
-  }, 600 * 1000);
+  //setInterval(() => {
+    //location.reload();
+  //}, 600 * 1000);
+  
   /* --------------------------------------------------------------------------
      1. Menú usuario por hover
   -------------------------------------------------------------------------- */
@@ -51,15 +52,20 @@ document.addEventListener("DOMContentLoaded", () => {
       e.stopPropagation();
     });
   }
+
   /* --------------------------------------------------------------------------
-     2. Ocultar “Control de Usuarios” para no-admin
+     2. Ocultar contrtol usuario
   -------------------------------------------------------------------------- */
-  const btnControl = document.querySelector(
-    "button.sidebar-btn[onclick=\"mostrarSeccion('control-usuario')\"]"
-  );
-  if (btnControl && currentUser.rol !== "admin") {
-    btnControl.style.display = "none";
+  const btnControl =
+    document.querySelector("button.sidebar-btn[onclick=\"mostrarSeccion('control-usuarios')\"]") ||
+    document.querySelector("button.sidebar-btn[onclick=\"mostrarSeccion('control-usuario')\"]");
+
+  const canManageUsers = ['admin', 'jefe'].includes(currentUser?.rol);
+
+  if (btnControl) {
+    btnControl.style.display = canManageUsers ? '' : 'none';
   }
+
   /* --------------------------------------------------------------------------
      2.1 Validar sesión (login/registro)
   -------------------------------------------------------------------------- */
@@ -105,27 +111,45 @@ document.addEventListener("DOMContentLoaded", () => {
   /* --------------------------------------------------------------------------
      4. Navegación entre secciones
   -------------------------------------------------------------------------- */
-  window.mostrarSeccion = (id) => {
-    document.querySelectorAll(".section").forEach((sec) => {
-      sec.classList.toggle("active", sec.id === id);
-      sec.classList.toggle("hidden", sec.id !== id);
+  const __baseMostrarSeccion = (id) => {
+  document.querySelectorAll(".section").forEach((sec) => {
+    sec.classList.toggle("active", sec.id === id);
+    sec.classList.toggle("hidden", sec.id !== id);
+  });
+
+  if (id === "tareas") {
+    cargarAnalistas();
+    cargarTareas();
+  } else if (id === "crear-tarea") {
+    initCrearTarea();
+  } else if (id === "control-usuario") {
+    if (!window.__usuariosYaCargados) {
+      cargarUsuarios();
+      window.__usuariosYaCargados = true;
+    }
+  } else {
+    window.__usuariosYaCargados = false;
+  }
+};
+
+window.mostrarSeccion = (id) => {
+  __baseMostrarSeccion(id);
+
+  if (id === "informes") {
+    try { initInformes?.(); } catch {}
+  }
+  if (id === "mantenimiento") {
+    try { initMantenimiento?.(); } catch {}
+  }
+  if (id === "inicio") {
+    requestAnimationFrame(() => {
+      try { initCalendarioTareas?.(); } catch {}
+      try { cargarTareas?.(); } catch {}
+      setTimeout(() => { try { window.__calendarRef?.updateSize?.(); } catch {} }, 0);
     });
-    if (id === "tareas") {
-      cargarAnalistas();
-      cargarTareas();
-    }
-    if (id === "crear-tarea") {
-      initCrearTarea();
-    }
-    if (id === "control-usuario") {
-      if (!usuariosYaCargados) {
-        cargarUsuarios();
-        usuariosYaCargados = true;
-      }
-    } else {
-      usuariosYaCargados = false;
-    }
-  };
+  }
+};
+
 
   window.manejarBotonVolver = () => {
     const actual = document.querySelector(".section.active")?.id;
@@ -201,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
             username: data.user.username,
             rol: data.user.rol,
             sessionToken: data.user.sessionToken,
-            loginTime: Date.now(), // 👈 clave para caducidad
+            loginTime: Date.now(), 
           };
           sessionStorage.setItem("user", JSON.stringify(userData));
           window.location.href = "index.html";
@@ -599,8 +623,9 @@ document.addEventListener("DOMContentLoaded", () => {
     btnConfirmar.addEventListener("click", enviarAmpliacion);
   }
 
+ // - Mostrar actividades
   let currentPage = 1;
-  const tasksPerPage = 5;
+  const tasksPerPage = 9;
   let allTasks = [];
 
   function mostrarTareasPaginadas() {
@@ -631,7 +656,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         tr.classList.add(clase);
       }
-
       const acciones = [];
 
       if (t.estado === "Pendiente") {
@@ -654,7 +678,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       tr.innerHTML = `
       <td>${t.titulo}</td>
-      <td>${analistasMap[t.analista] || t.analista}</td>
+      <td>${t.analista?.username || analistasMap[t.analista] || "Sin asignar"}</td>
       <td>${new Date(t.fechaHora).toLocaleString()}</td>
       <td>${t.estado || "Pendiente"}</td>
       <td class="filtros-botones">${acciones.join("")}</td>
@@ -713,13 +737,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const tareas = await res.json();
 
       allTasks = tareas.slice().sort((a, b) => {
-        if (a.estado === b.estado) return 0;
-        if (a.estado === "Pendiente") return -1;
-        if (b.estado === "Pendiente") return 1;
-        return 0;
+        if (a.estado === "Pendiente" && b.estado !== "Pendiente") return -1;
+        if (a.estado !== "Pendiente" && b.estado === "Pendiente") return 1;
+        const fechaA = new Date(a.fechaHora);
+        const fechaB = new Date(b.fechaHora);
+        return fechaB - fechaA;
       });
       currentPage = 1;
       mostrarTareasPaginadas();
+
+      if (document.getElementById("calendar")) {
+        initCalendarioTareas(allTasks);
+
+      }
+
+      if (document.getElementById("lista-pendientes")) {
+        mostrarPendientesWidget(allTasks);
+      }
+
     } catch (err) {
       console.error("Error al cargar tareas:", err);
       alert("❌ Error al cargar tareas");
@@ -736,10 +771,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 0) Ordenar: pendientes primero, luego el resto (manteniendo el orden relativo)
     const ordenadas = tareas.slice().sort((a, b) => {
-      if (a.estado === b.estado) return 0;
-      if (a.estado === "Pendiente") return -1;
-      if (b.estado === "Pendiente") return 1;
-      return 0;
+      if (a.estado === "Pendiente" && b.estado !== "Pendiente") return -1;
+      if (a.estado !== "Pendiente" && b.estado === "Pendiente") return 1;
+      const fechaA = new Date(a.fechaHora);
+      const fechaB = new Date(b.fechaHora);
+      return fechaB - fechaA;
     });
 
     // 1) Renderizar filas
@@ -830,6 +866,14 @@ document.addEventListener("DOMContentLoaded", () => {
           </td>
           <td>${u.isActive ? "Activo" : "Inactivo"}</td>
           <td>
+            <input class="tg-input" data-user-id="${
+              u._id
+            }" placeholder="chat id" value="${
+          u.telegramChatId || ""
+        }" style="width: 140px" />
+            <button class="tg-save" data-user-id="${u._id}">Guardar</button>
+          </td>
+          <td>
             <button onclick="editarUsuario('${u._id}','${
           u.username
         }')">✏️ Editar</button>
@@ -860,6 +904,26 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         });
       });
+
+      document.querySelectorAll(".tg-save").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const userId = btn.dataset.userId;
+          const input = document.querySelector(`.tg-input[data-user-id="${userId}"]`);
+          const chatId = (input?.value || '').trim();
+          try {
+            const resp = await secureFetch(`${API_BASE}/usuarios/${userId}/telegram`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ telegramChatId: chatId }),
+            });
+            if (!resp.ok) throw new Error();
+            alert('✅ Telegram actualizado');
+          } catch (e) {
+            alert('❌ No se pudo guardar el Telegram chat id');
+          }
+        });
+     });
+
     } catch (err) {
       console.error("Error al cargar usuarios:", err);
       tbody.innerHTML = "";
@@ -880,7 +944,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ["detalles-titulo", "titulo"],
         ["detalles-descripcion", "descripcion"],
         ["detalles-fechaHora", () => new Date(t.fechaHora).toLocaleString()],
-        ["detalles-analista", () => analistasMap[t.analista] || t.analista],
+        ["detalles-analista", () => t.analista?.username || analistasMap[t.analista] || "Sin asignar"],
         ["detalles-fechaLimite", "fechaLimite"],
         ["detalles-ticket", "ticket"],
         ["detalles-placa", "placa"],
@@ -993,27 +1057,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   async function aplicarFiltros() {
+    const mapKeys = {
+      titulo: "titulo",
+      ticket: "ticket",
+      placa: "placa",
+      analista: "analista",
+      estado: "estado",
+      "fecha-inicio": "fechaInicio",
+      "fecha-fin": "fechaFin",
+    };
+
     const params = new URLSearchParams();
-    [
-      "titulo",
-      "ticket",
-      "placa",
-      "analista",
-      "estado",
-      "fecha-inicio",
-      "fecha-fin",
-    ].forEach((k) => {
-      const el = document.getElementById(`filtro-${k}`);
-      if (el?.value) params.append(k.replace("-", ""), el.value);
+    Object.entries(mapKeys).forEach(([inputKey, queryKey]) => {
+      const el = document.getElementById(`filtro-${inputKey}`);
+      const val = el?.value?.trim();
+      if (val) params.append(queryKey, val);
     });
+
     try {
-      const res = await secureFetch(`${API_BASE}/tareas?${params}`, {
+      const res = await secureFetch(`${API_BASE}/tareas?${params.toString()}`, {
         method: "GET",
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const tareas = await res.json();
-      mostrarTareas(tareas);
+
+      const ordenadas = (Array.isArray(tareas) ? tareas : []).sort((a, b) => {
+      const da = new Date(a.fechaHora || a.createdAt || 0).getTime();
+      const db = new Date(b.fechaHora || b.createdAt || 0).getTime();
+      return db - da; // más nuevas primero
+      });
+      
+      allTasks = Array.isArray(tareas) ? tareas : [];
+      currentPage = 1;
+      mostrarTareasPaginadas();
     } catch (e) {
-      console.error(e);
+      console.error("❌ Error aplicando filtros:", e);
+      alert("No se pudieron aplicar los filtros.");
     }
   }
 
@@ -1125,18 +1204,28 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.restablecerClave = async (id) => {
-    if (!confirm("¿Restablecer contraseña a valor por defecto?")) return;
+    const nuevaClave = prompt("Ingrese la nueva contraseña:");
+    if (!nuevaClave || nuevaClave.trim().length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
     try {
       const res = await secureFetch(
         `${API_BASE}/usuarios/${id}/reset-password`,
         {
           method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ password: nuevaClave }),
         }
       );
+
       if (!res.ok) throw new Error();
-      alert("✅ Contraseña restablecida");
+      alert("Contraseña restablecida correctamente");
     } catch {
-      alert("❌ Error al restablecer contraseña");
+      alert("Error al restablecer contraseña");
     }
   };
 
@@ -1231,14 +1320,784 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 2) Llamar a initInformes() cuando entres a la sección de informes
+  // 2) Llamar al inicio
   const oldMostrar = window.mostrarSeccion;
   window.mostrarSeccion = (id) => {
-    oldMostrar(id);
-    if (id === "informes") {
-      initInformes();
+  oldMostrar(id);
+
+  if (id === 'informes') {
+    initInformes?.();
+  }
+
+  if (id === 'mantenimiento') {
+    initMantenimiento?.();
+  }
+
+  if (id === 'inicio') {
+    requestAnimationFrame(() => {
+      try { initCalendarioTareas?.(); } catch {}
+      try { cargarTareas?.(); } catch {}
+      setTimeout(() => { try { window.__calendarRef?.updateSize?.(); } catch {} }, 0);
+    });
+  }
+};
+
+
+  /* --------------------------------------------------------------------------
+     10. Mostrar Tareas
+  -------------------------------------------------------------------------- */
+  window.__calendarRef = null;
+
+  function initCalendarioTareas(tareas) {
+    const calendarEl = document.getElementById("calendar");
+    if (!calendarEl) return;
+
+    if (calendarEl._fullCalendar) {
+      calendarEl._fullCalendar.destroy();
+    }
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: "dayGridMonth",
+      locale: "es",
+      height: "auto",
+      headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek",
+      },
+
+      eventDidMount(info) {
+        info.el.style.cursor = "pointer";
+      },
+      dayCellDidMount(info) {
+        info.el.classList.add("is-day-clickable");
+      },
+      dateClick(info) {},
+      events: tareas.map((t) => ({
+        title: t.titulo,
+        start: t.fechaHora,
+        end: t.fechaLimite,
+        color: t.estado === "Finalizado" ? "#81c784" : "#ffb74d",
+        extendedProps: {
+          id: t._id,
+          analista: t.analista,
+          estado: t.estado,
+        },
+      })),
+
+      eventClick(info) {
+        const id = info.event.extendedProps.id;
+        verDetallesTarea(id);
+      },
+    });
+
+    calendar.render();
+    calendarEl._fullCalendar = calendar;
+    window.__calendarRef = calendar;
+  }
+  const __oldMostrarSeccion = window.mostrarSeccion || function () {};
+  window.mostrarSeccion = async function (id) {
+    __oldMostrarSeccion(id);
+
+    if (id === "inicio") {
+      const calendarEl = document.getElementById("calendar");
+      if (!calendarEl?._fullCalendar) {
+        try {
+          const resp = await secureFetch(`${API_BASE}/tareas`, { method: "GET" });
+          const tareas = await resp.json();
+          initCalendarioTareas(tareas);
+        } catch (e) {
+          console.error("No se pudo cargar tareas para el calendario:", e);
+        }
+      }
+      requestAnimationFrame(() => {
+        try {
+          if (window.__calendarRef) {
+            window.__calendarRef.updateSize();
+          } else if (calendarEl?._fullCalendar) {
+            calendarEl._fullCalendar.updateSize();
+          }
+        } catch (e) {
+          try {
+            calendarEl?._fullCalendar?.render();
+          } catch {}
+        }
+      });
     }
   };
+/* --------------------------------------------------------------------------
+   Mostrar actividades pendientes
+-------------------------------------------------------------------------- */
+function mostrarPendientesWidget(tareas) {
+  const contenedor = document.getElementById("lista-pendientes");
+  if (!contenedor) return;
+
+  const pendientes = tareas
+    .filter(t => t.estado === "Pendiente")
+    .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora))
+    .slice(0, 10);
+
+  contenedor.innerHTML = "";
+
+  if (pendientes.length === 0) {
+    contenedor.innerHTML = `<li>✅ No hay tareas pendientes</li>`;
+    return;
+  }
+
+  pendientes.forEach(t => {
+    const fecha = new Date(t.fechaHora).toLocaleDateString("es-CO", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+
+    const responsable = t.analista?.username || "Sin asignar";
+
+    const li = document.createElement("li");
+    li.style.cursor = "pointer";
+    li.title = "Ver detalle";
+    li.innerHTML = `
+      <strong>${responsable}</strong><br/>
+      <span>${t.titulo}</span><br/>
+      <small>${fecha}</small>
+    `;
+    li.addEventListener("click", () => verDetallesTarea(t._id));
+    contenedor.appendChild(li);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Crear plan mensual
+-------------------------------------------------------------------------- */
+function monthRange(year, month/*1-12*/) {
+  const start = new Date(Date.UTC(year, month-1, 1, 0, 0, 0));
+  const end   = new Date(Date.UTC(year, month, 0, 23, 59, 59)); // fin del mes
+  return { start, end };
+}
+
+async function pickNightAnalysts() {
+  const list = await Usuario.find({ rol: 'analista' }, 'username').limit(4).lean();
+  if (list.length < 4) return list; 
+  return list;
+}
+
+// ================== MANTENIMIENTO  ==================
+
+let equiposData = [];
+let equipoEnEdicion = null;
+
+async function initMantenimiento() {
+  bindFormEquipo();
+  bindFormPlan();
+  bindFiltrosEquipos();
+  await cargarEquipos();
+  actualizarEstadisticas();
+}
+
+// ==================== FORMULARIO EQUIPO ====================
+
+function bindFormEquipo() {
+  const form = document.getElementById('form-equipo');
+  if (!form || form.__bound) return;
+
+  form.addEventListener('submit', guardarEquipo);
+  
+  // Agregar validación en tiempo real
+  const campos = ['eq-marca', 'eq-modelo', 'eq-serial', 'eq-nombre'];
+  campos.forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('input', () => validarCampo(input));
+    }
+  });
+
+  // Botón cancelar edición
+  const btnCancelar = document.createElement('button');
+  btnCancelar.type = 'button';
+  btnCancelar.textContent = 'Cancelar Edición';
+  btnCancelar.className = 'btn-cancelar';
+  btnCancelar.style.display = 'none';
+  btnCancelar.onclick = cancelarEdicionEquipo;
+  form.appendChild(btnCancelar);
+
+  form.__bound = true;
+}
+
+function validarCampo(input) {
+  const valor = input.value.trim();
+  if (!valor && input.hasAttribute('required')) {
+    input.style.borderColor = '#ef4444';
+    return false;
+  } else {
+    input.style.borderColor = '';
+    return true;
+  }
+}
+
+function validarFormularioEquipo() {
+  const campos = {
+    'eq-marca': 'Marca',
+    'eq-modelo': 'Modelo',
+    'eq-serial': 'Serial',
+    'eq-nombre': 'Nombre/Ubicación',
+    'eq-compra': 'Fecha de Compra'
+  };
+
+  const errores = [];
+
+  for (const [id, nombre] of Object.entries(campos)) {
+    const input = document.getElementById(id);
+    if (!input.value.trim()) {
+      errores.push(`El campo "${nombre}" es obligatorio`);
+      input.style.borderColor = '#ef4444';
+    }
+  }
+
+  // Validar formato de fecha
+  const fechaCompra = document.getElementById('eq-compra').value;
+  if (fechaCompra && new Date(fechaCompra) > new Date()) {
+    errores.push('La fecha de compra no puede ser futura');
+  }
+
+  return errores;
+}
+
+async function guardarEquipo(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const errores = validarFormularioEquipo();
+  if (errores.length > 0) {
+    mostrarNotificacion(errores.join("\n"), "error");
+    return;
+  }
+
+  const form = document.getElementById("form-equipo");
+  const btn = form.querySelector("button[type='submit']");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+
+  const payload = {
+    marca: document.getElementById("eq-marca").value.trim(),
+    modelo: document.getElementById("eq-modelo").value.trim(),
+    serial: document.getElementById("eq-serial").value.trim(),
+    placa: document.getElementById("eq-placa").value.trim(),
+    nombre: document.getElementById("eq-nombre").value.trim(),
+    fechaCompra: document.getElementById("eq-compra").value,
+    ultimoMantenimientoFecha: document.getElementById("eq-ult-fecha").value || null,
+    ultimoMantenimientoPor: document.getElementById("eq-ult-por").value || null,
+    ultimoMantenimientoCambios: document.getElementById("eq-ult-cambios").value.trim()
+  };
+
+  const id = form.dataset.id;
+  const method = id ? "PUT" : "POST";
+  const url = id ? `/equipos/${id}` : `/equipos`;
+
+  try {
+    console.info("[guardarEquipo] Enviando:", method, url, payload);
+    const res = await secureFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    console.info("[guardarEquipo] Status:", res.status);
+
+    // Intentar parsear body
+    let body;
+    try {
+      body = await res.json();
+    } catch (parseErr) {
+      body = null;
+    }
+
+    if (!res.ok) {
+      const mensaje = (body && (body.error || body.message)) || `HTTP ${res.status}`;
+      throw new Error(mensaje);
+    }
+
+    // OK
+    mostrarNotificacion(`✅ Equipo ${id ? "actualizado" : "creado"} correctamente`, "success");
+    limpiarFormularioEquipo();
+    await cargarEquipos();
+    actualizarEstadisticas();
+
+  } catch (err) {
+    console.error("[guardarEquipo] Error:", err);
+    // Mostrar mensaje explícito al usuario
+    mostrarNotificacion(`❌ ${err.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+
+
+function limpiarFormularioEquipo() {
+  const form = document.getElementById('form-equipo');
+  form.reset();
+  delete form.dataset.id;
+  equipoEnEdicion = null;
+  
+  const btnCancelar = form.querySelector('.btn-cancelar');
+  if (btnCancelar) btnCancelar.style.display = 'none';
+  
+  const btnSubmit = form.querySelector('button[type="submit"]');
+  btnSubmit.textContent = 'Agregar Equipo';
+  
+  // Limpiar bordes de validación
+  form.querySelectorAll('input').forEach(input => {
+    input.style.borderColor = '';
+  });
+}
+
+function cancelarEdicionEquipo() {
+  if (equipoEnEdicion && confirm('¿Desea cancelar la edición?')) {
+    limpiarFormularioEquipo();
+  }
+}
+
+// ==================== CARGAR Y RENDERIZAR EQUIPOS ====================
+
+async function cargarEquipos() {
+  const tbody = document.getElementById("tbl-equipos");
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" style="text-align:center;">Cargando equipos...</td>
+    </tr>
+  `;
+
+  try {
+    const res = await secureFetch(`/equipos`, { method: "GET" });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Error cargando equipos" }));
+      throw new Error(err.error);
+    }
+
+    const data = await res.json();
+    equiposData = Array.isArray(data) ? data : [];
+
+    renderEquipos(equiposData);
+    actualizarEstadisticas();
+
+  } catch (e) {
+    console.error("Error cargando equipos:", e);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center; color:#ef4444;">
+          ❌ No se pudieron cargar los equipos
+        </td>
+      </tr>`;
+    mostrarNotificacion("❌ No se pudieron cargar los equipos", "error");
+  }
+}
+
+function renderEquipos(lista) {
+  const tbody = document.getElementById('tbl-equipos');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!Array.isArray(lista) || lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay equipos registrados</td></tr>';
+    return;
+  }
+
+  lista.forEach(equipo => {
+    const tr = document.createElement('tr');
+
+    const compra = equipo.fechaCompra
+      ? new Date(equipo.fechaCompra).toLocaleDateString('es-CO')
+      : '—';
+
+    const proximo = equipo.proximoMantenimiento
+      ? formatearFechaConEstado(equipo.proximoMantenimiento)
+      : '—';
+
+    const ultimo = equipo.ultimoMantenimientoFecha
+      ? new Date(equipo.ultimoMantenimientoFecha).toLocaleDateString('es-CO')
+      : '—';
+
+    const estadoClase = obtenerEstadoMantenimiento(equipo.proximoMantenimiento);
+    if (estadoClase) tr.classList.add(estadoClase);
+
+    tr.innerHTML = `
+      <td>
+        <strong>${equipo.nombre || '—'}</strong><br/>
+        <small style="color:#666;">${equipo.marca || ''} ${equipo.modelo || ''}</small>
+      </td>
+      <td>
+        ${equipo.serial || '—'}
+        ${equipo.placa ? `<br/><small>Placa: ${equipo.placa}</small>` : ''}
+      </td>
+      <td>${compra}</td>
+      <td>${proximo}</td>
+      <td>${ultimo}</td>
+      <td class="filtros-botones">
+        <button type="button" class="btn-editar" data-id="${equipo._id}">
+          <span class="material-icons">edit</span> Editar
+        </button>
+        <button type="button" class="btn-eliminar" data-id="${equipo._id}">
+          <span class="material-icons">delete</span> Eliminar
+        </button>
+      </td>
+    `;
+
+    // listeners (asegurarnos que elementos existan)
+    const btnEdit = tr.querySelector('.btn-editar');
+    const btnDel = tr.querySelector('.btn-eliminar');
+    if (btnEdit) btnEdit.addEventListener('click', () => editarEquipo(equipo));
+    if (btnDel) btnDel.addEventListener('click', () => eliminarEquipo(equipo._id, equipo.nombre));
+
+    tbody.appendChild(tr);
+  });
+}
+
+function formatearFechaConEstado(fecha) {
+  const d = new Date(fecha);
+  const texto = d.toLocaleDateString('es-CO');
+  const hoy = new Date();
+  const diff = Math.ceil((d - hoy) / (1000 * 60 * 60 * 24));
+
+  if (diff < 0) return `<span style="color:#ef4444;">${texto} (Vencido)</span>`;
+  if (diff <= 30) return `<span style="color:#f59e0b;">${texto} (Próximo)</span>`;
+  return texto;
+}
+
+function obtenerEstadoMantenimiento(fecha) {
+  if (!fecha) return null;
+  
+  const d = new Date(fecha);
+  const hoy = new Date();
+  const diff = Math.ceil((d - hoy) / (1000 * 60 * 60 * 24));
+
+  if (diff < 0) return 'status-red';
+  if (diff <= 30) return 'status-yellow';
+  return null;
+}
+
+function editarEquipo(equipo) {
+  equipoEnEdicion = equipo;
+  
+  document.getElementById('eq-marca').value = equipo.marca || '';
+  document.getElementById('eq-modelo').value = equipo.modelo || '';
+  document.getElementById('eq-serial').value = equipo.serial || '';
+  document.getElementById('eq-placa').value = equipo.placa || '';
+  document.getElementById('eq-nombre').value = equipo.nombre || '';
+  document.getElementById('eq-compra').value = equipo.fechaCompra 
+    ? equipo.fechaCompra.slice(0, 10) 
+    : '';
+
+  document.getElementById('eq-ult-fecha').value = equipo.ultimoMantenimientoFecha 
+    ? equipo.ultimoMantenimientoFecha.slice(0, 10) 
+    : '';
+  document.getElementById('eq-ult-por').value = equipo.ultimoMantenimientoPor || '';
+  document.getElementById('eq-ult-cambios').value = equipo.ultimoMantenimientoCambios || '';
+
+  const form = document.getElementById('form-equipo');
+  form.dataset.id = equipo._id;
+  
+  const btnSubmit = form.querySelector('button[type="submit"]');
+  btnSubmit.textContent = 'Actualizar Equipo';
+  
+  const btnCancelar = form.querySelector('.btn-cancelar');
+  if (btnCancelar) btnCancelar.style.display = 'inline-block';
+
+  // Scroll al formulario
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function eliminarEquipo(id, nombre) {
+  if (!confirm(`¿Está seguro de eliminar el equipo "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+    return;
+  }
+
+  try {
+    const res = await secureFetch(`/equipos/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar equipo');
+    
+    mostrarNotificacion('✅ Equipo eliminado correctamente', 'success');
+    await cargarEquipos();
+    actualizarEstadisticas();
+    
+  } catch (err) {
+    console.error('Error al eliminar:', err);
+    mostrarNotificacion('❌ No se pudo eliminar el equipo', 'error');
+  }
+}
+
+// ==================== FILTROS DE EQUIPOS ====================
+
+function bindFiltrosEquipos() {
+  const filtroNombre = document.getElementById('filtro-equipo-nombre');
+  const filtroSerial = document.getElementById('filtro-equipo-serial');
+  const filtroEstado = document.getElementById('filtro-equipo-estado');
+
+  if (filtroNombre) filtroNombre.addEventListener('input', aplicarFiltrosEquipos);
+  if (filtroSerial) filtroSerial.addEventListener('input', aplicarFiltrosEquipos);
+  if (filtroEstado) filtroEstado.addEventListener('change', aplicarFiltrosEquipos);
+}
+
+function aplicarFiltrosEquipos() {
+  const nombre = document.getElementById('filtro-equipo-nombre')?.value.toLowerCase() || '';
+  const serial = document.getElementById('filtro-equipo-serial')?.value.toLowerCase() || '';
+  const estado = document.getElementById('filtro-equipo-estado')?.value || '';
+
+  const filtrados = equiposData.filter(e => {
+    const matchNombre = !nombre || e.nombre.toLowerCase().includes(nombre);
+    const matchSerial = !serial || (e.serial && e.serial.toLowerCase().includes(serial));
+    
+    let matchEstado = true;
+    if (estado === 'vencido') {
+      matchEstado = e.proximoMantenimiento && new Date(e.proximoMantenimiento) < new Date();
+    } else if (estado === 'proximo') {
+      const diff = Math.ceil((new Date(e.proximoMantenimiento) - new Date()) / (1000 * 60 * 60 * 24));
+      matchEstado = diff >= 0 && diff <= 30;
+    }
+
+    return matchNombre && matchSerial && matchEstado;
+  });
+
+  renderEquipos(filtrados);
+}
+
+// ==================== PLAN MENSUAL ====================
+
+function bindFormPlan() {
+  const form = document.getElementById('form-plan');
+  if (!form || form.__bound) return;
+
+  form.addEventListener('submit', generarPlanMensual);
+  
+  // Valores por defecto: mes actual
+  const now = new Date();
+  document.getElementById('plan-year').value = now.getFullYear();
+  document.getElementById('plan-month').value = now.getMonth() + 1;
+  
+  form.__bound = true;
+}
+
+async function generarPlanMensual(e) {
+  e.preventDefault();
+  
+  const year = parseInt(document.getElementById('plan-year').value, 10);
+  const month = parseInt(document.getElementById('plan-month').value, 10);
+
+  // Validaciones
+  if (!year || year < 2000 || year > 2100) {
+    mostrarNotificacion('⚠️ Año inválido', 'error');
+    return;
+  }
+  if (!month || month < 1 || month > 12) {
+    mostrarNotificacion('⚠️ Mes inválido', 'error');
+    return;
+  }
+
+  const form = e.target;
+  const btnSubmit = form.querySelector('button[type="submit"]');
+  const textoOriginal = btnSubmit.textContent;
+  
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML = '<span class="material-icons spinning">refresh</span> Generando plan...';
+
+  try {
+    const res = await secureFetch(
+      `/mantenimiento/plan/generar?year=${year}&month=${month}`, 
+      { method: 'POST' }
+    );
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error || 'Error al generar plan');
+    }
+
+    mostrarResumenPlan(data, month, year);
+    mostrarNotificacion('✅ Plan mensual generado correctamente', 'success');
+    
+    // Actualizar notificaciones y tareas si están en esa sección
+    try { 
+      if (typeof cargarNotificaciones === 'function') {
+        cargarNotificaciones(); 
+      }
+    } catch {}
+    
+    try { 
+      if (document.querySelector('#tareas.section.active') && typeof cargarTareas === 'function') {
+        cargarTareas(); 
+      }
+    } catch {}
+
+  } catch (err) {
+    console.error('Error al generar plan:', err);
+    mostrarNotificacion(`❌ ${err.message}`, 'error');
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = textoOriginal;
+  }
+}
+
+function mostrarResumenPlan(data, month, year) {
+  const box = document.getElementById('plan-resumen');
+  if (!box) return;
+
+  const analistas = (data.analistas || [])
+    .map(a => a.username)
+    .join(', ') || '—';
+
+  const total = data.total || {};
+  const mesesNombres = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div class="resumen-plan">
+      <div class="resumen-header">
+        <h3>📋 Plan de Mantenimiento - ${mesesNombres[month - 1]} ${year}</h3>
+        <button class="btn-cerrar" onclick="document.getElementById('plan-resumen').style.display='none'">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      
+      <div class="resumen-stats">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-content">
+            <div class="stat-label">Analistas Asignados</div>
+            <div class="stat-value">${data.analistas?.length || 0}</div>
+            <div class="stat-detail">${analistas}</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">💻</div>
+          <div class="stat-content">
+            <div class="stat-label">Equipos Elegibles</div>
+            <div class="stat-value">${total.totalEquiposElegibles || 0}</div>
+            <div class="stat-detail">Requieren mantenimiento</div>
+          </div>
+        </div>
+
+        <div class="stat-card success">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <div class="stat-label">Tareas Creadas</div>
+            <div class="stat-value">${total.creadasEsteMes || 0}</div>
+            <div class="stat-detail">Asignadas este mes</div>
+          </div>
+        </div>
+
+        <div class="stat-card warning">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-content">
+            <div class="stat-label">Pendientes</div>
+            <div class="stat-value">${total.sobrantesParaProximoMes || 0}</div>
+            <div class="stat-detail">Para el próximo mes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="resumen-footer">
+        <p><strong>Nota:</strong> Las tareas han sido distribuidas equitativamente entre los analistas del turno nocturno.</p>
+        <button class="btn-primary" onclick="window.mostrarSeccion?.('tareas')">
+          Ver Tareas Creadas
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Scroll al resumen
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ==================== ESTADÍSTICAS ====================
+
+function actualizarEstadisticas() {
+  const stats = calcularEstadisticas(equiposData);
+  mostrarEstadisticas(stats);
+}
+
+function calcularEstadisticas(equipos) {
+  const hoy = new Date();
+  let vencidos = 0;
+  let proximos = 0;
+  let alDia = 0;
+
+  equipos.forEach(e => {
+    if (!e.proximoMantenimiento) return;
+    
+    const diff = Math.ceil((new Date(e.proximoMantenimiento) - hoy) / (1000 * 60 * 60 * 24));
+    
+    if (diff < 0) vencidos++;
+    else if (diff <= 30) proximos++;
+    else alDia++;
+  });
+
+  return { total: equipos.length, vencidos, proximos, alDia };
+}
+
+function mostrarEstadisticas(stats) {
+  const container = document.getElementById('stats-equipos');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-number">${stats.total}</div>
+        <div class="stat-label">Total Equipos</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-number">${stats.vencidos}</div>
+        <div class="stat-label">Mantenimiento Vencido</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-number">${stats.proximos}</div>
+        <div class="stat-label">Próximos 30 días</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-number">${stats.alDia}</div>
+        <div class="stat-label">Al Día</div>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== SISTEMA DE NOTIFICACIONES ====================
+
+function mostrarNotificacion(mensaje, tipo = 'info') {
+  const notif = document.createElement('div');
+  notif.className = `notificacion notif-${tipo}`;
+  
+  const iconos = {
+    success: 'check_circle',
+    error: 'error',
+    warning: 'warning',
+    info: 'info'
+  };
+
+  notif.innerHTML = `
+    <span class="material-icons">${iconos[tipo] || 'info'}</span>
+    <span>${mensaje}</span>
+  `;
+
+  document.body.appendChild(notif);
+
+  setTimeout(() => notif.classList.add('show'), 10);
+  
+  setTimeout(() => {
+    notif.classList.remove('show');
+    setTimeout(() => notif.remove(), 300);
+  }, 4000);
+}
+
+// ==================== EXPORTAR FUNCIONES ====================
+
+window.initMantenimiento = initMantenimiento;
 
   /* --------------------------------------------------------------------------
      17. Inicialización al abrir index.html
@@ -1246,5 +2105,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (path.endsWith("index.html")) {
     cargarAnalistas();
     cargarTareas();
+    cargarUsuarios();
+    cargarEquipos();
   }
 });

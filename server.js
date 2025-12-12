@@ -9,22 +9,23 @@ const fs       = require('fs');
 const https    = require('https');
 const sanitizeHtml = require('sanitize-html');
 const mongoSanitize = require('express-mongo-sanitize')
-
 const Usuario = require('./models/Usuario');
 const Tarea   = require('./models/Tarea');
+const Equipo = require('./models/Equipo');
 const { REFUSED } = require('dns');
 const Auditoria = require('./models/Auditoria');
+const { sendMessage,msgProxima, msgVencida, msgNuevaAsignacion, msgReasignacion, msgAmpliacion } = require('./helpers/telegram');
+const cron = require('node-cron');
+const { getStatusClass } = require('./helpers/status');
 const { resolve } = require('path/win32');
-
 const app  = express();
 const port = 3000;
 
+app.set('trust proxy', true);
 const options = {
   key: fs.readFileSync('./localhost-key.pem'),
   cert: fs.readFileSync('./localhost.pem')
 };
-
-app.use(express.static(path.join(__dirname)));
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 1) Conexión a MongoDB
@@ -35,6 +36,7 @@ mongoose.connect('mongodb://localhost:27017/entregas_turnos')
     console.error('❌ Error conectando a MongoDB:', err);
     process.exit(1);
   })
+
 // ───────────────────────────────────────────────────────────────────────────────
 // 2) Middlewares
 // ───────────────────────────────────────────────────────────────────────────────
@@ -77,6 +79,44 @@ function sanitizeInput(input) {
   })
 }
 
+// - JOB
+cron.schedule('*/10 * * * *', async () => {
+  const now = new Date();
+  try {
+    const pendientes = await Tarea.find({ estado: 'Pendiente', fechaLimite: { $ne: null } }).lean();
+    const jefes = await Usuario.find({ rol: 'jefe', telegramChatId: { $ne: null } }, { telegramChatId: 1 }).lean();
+    const jefesChats = jefes.map(j => j.telegramChatId);
+
+    for (const t of pendientes) {
+      const color = getStatusClass(t, now);
+
+      if (color === 'status-yellow' && !t.proximaNotificada) {
+        try {
+          const analista = await Usuario.findById(t.analista, { telegramChatId: 1 }).lean();
+          if (analista?.telegramChatId) await sendMessage(analista.telegramChatId, msgProxima(t, now));
+          for (const chat of jefesChats) await sendMessage(chat, msgProxima(t, now));
+          await Tarea.updateOne({ _id: t._id }, { $set: { proximaNotificada: true } });
+        } catch (e) {
+          console.warn('⚠️ Aviso proxima falló:', e.message);
+        }
+      }
+
+      if (color === 'status-red' && !t.vencidaNotificada) {
+        try {
+          const analista = await Usuario.findById(t.analista, { telegramChatId: 1 }).lean();
+          if (analista?.telegramChatId) await sendMessage(analista.telegramChatId, msgVencida(t, now));
+          for (const chat of jefesChats) await sendMessage(chat, msgVencida(t, now));
+          await Tarea.updateOne({ _id: t._id }, { $set: { vencidaNotificada: true } });
+        } catch (e) {
+          console.warn('⚠️ Aviso vencida falló:', e.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('❌ Cron avisos error:', err);
+  }
+});
+
 // — Registro
 app.post('/registro', async (req, res) => {
   const { username, password } = req.body;
@@ -97,12 +137,13 @@ app.post('/registro', async (req, res) => {
     const nuevo = new Usuario({ username, password: hash, rol: 'analista' });
     await nuevo.save();
 
-    const ip = req.header['x-forwarded-for'] || req.connection.remoteAddress;
+    const xff = (req.headers['x-forwarded-for'] || '').toString();
+    const ip = xff.split(',')[0].trim() || req.ip || req.connection?.remoteAddress || 'desconocida';
     const ruta = req.originalUrl;
     await Auditoria.create({
       usuario: nuevo._id,
       accion: 'Registro de usuario',
-      descripcion: 'Nuevo registro de usuario: ${username}',
+      descripcion: `Nuevo registro de usuario: ${username}`,
       ip,
       ruta
     });
@@ -219,7 +260,7 @@ app.post('/logout', async (req, res) => {
     return res.json({ message: "Sesion cerrada exitosamente"});
   } catch (err) {
     console.error("❌ Error en POST /logout:", err);
-    return re.status(500).json({ error: "Error cerrando sesion"});
+    return res.status(500).json({ error: "Error cerrando sesion"});
   }
 });
 
@@ -254,17 +295,30 @@ app.put('/usuarios/:id', async (req, res) => {
 });
 
 // — Resetear contraseña
-app.put('/usuarios/:id/reset-password', async (req, res) => {
-  const { id } = req.params;
-  const defaultPass = "Abc123!@#";
+app.put("/usuarios/:id/reset-password", async (req, res) => {
   try {
-    const hash = await bcrypt.hash(defaultPass, 10);
-    const u = await Usuario.findByIdAndUpdate(id, { password: hash });
-    if (!u) return res.status(404).json({ error: "Usuario no encontrado" });
-    return res.json({ message: "Contraseña restablecida", defaultPassword: defaultPass });
+    const { password } = req.body;
+
+    if (!password || password.trim().length < 6) {
+      return res
+        .status(400)
+        .json({ error: "La contraseña debe tener al menos 6 caracteres" });
+    }
+
+    const user = await Usuario.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // Hashear la nueva contraseña
+    const hashed = await bcrypt.hash(password, 10);
+    user.password = hashed;
+    await user.save();
+
+    return res.json({ message: "Contraseña restablecida correctamente" });
   } catch (err) {
-    console.error("❌ Error en PUT /usuarios/:id/reset-password:", err);
-    return res.status(500).json({ error: "Error al restablecer contraseña" });
+    console.error("Error en reset-password:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
@@ -289,6 +343,33 @@ app.get('/analistas', async (req, res) => {
   } catch (err) {
     console.error("❌ Error en GET /analistas:", err);
     return res.status(500).json({ error: "Error en el servidor" });
+  }
+});
+
+// - Actualizar chatt de Telegram del usuario
+app.put('/usuarios/:id/telegram', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { telegramChatId, telegramUsername } = req.body || {};
+
+    const isSelf = String(req.user._id) === String(id);
+    if (!isSelf && !['admin', 'jefe'].includes(req.user.rol)) {
+      return res.status(403).json({ error: 'No autorizado' }); 
+    }
+
+    const update = {};
+    if (telegramChatId !== undefined) update.telegramChatId = telegramChatId?.trim() || null;
+    if (telegramUsername !== undefined) update.telegramUsername = telegramUsername?.trim() || null;
+
+    const user = await Usuario.findByIdAndUpdate(id, update, { new: true });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    return res.json({ message: 'Telegram actualizado', user: {
+      id: user._id, username: user.username, telegramChatId: user.telegramChatId, telegramUsername: user.telegramUsername
+    }});
+  } catch (err) {
+    console.error('❌ Error en PUT /usuarios/:id/telegram:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
@@ -406,6 +487,15 @@ app.put('/tareas/ampliar-fecha/:id', async (req, res) => {
       ruta
     });
 
+    try {
+      const analistaDoc = await Usuario.findById(t.analista).lean();
+      if (analistaDoc?.telegramChatId) {
+        await sendMessage(analistaDoc.telegramChatId, msgAmpliacion(t, nuevaFecha));
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudo enviar Telegram en ampliación:', e.message);
+    }
+
     return res.json({ message: 'Fecha limite ampliada correctamente', tarea: t})
   } catch (err) {
     console.error('❌ Error en PUT /tareas/ampliar-fecha/:id:', err);
@@ -415,19 +505,20 @@ app.put('/tareas/ampliar-fecha/:id', async (req, res) => {
 
 // — Listar tareas
 app.get('/tareas', async (req, res) => {
-  let { analista, estado, fechaInicio, fechaFin, titulo, placa } = req.query;
+  let { analista, estado, fechaInicio, fechaFin, titulo, placa, ticket } = req.query;
   const filtro = {};
   if (analista && Types.ObjectId.isValid(analista)) filtro.analista = analista;
   if (estado) filtro.estado = estado;
   if (titulo) filtro.titulo = { $regex: titulo, $options: 'i' };
   if (placa)  filtro.placa  = { $regex: placa,  $options: 'i' };
+  if (ticket) filtro.ticket = { $regex: ticket, $options: 'i' };
   if (fechaInicio || fechaFin) {
     filtro.fechaHora = {};
     if (fechaInicio) filtro.fechaHora.$gte = new Date(fechaInicio);
     if (fechaFin)    filtro.fechaHora.$lte = new Date(fechaFin + 'T23:59:59');
   }
   try {
-    const tareas = await Tarea.find(filtro).lean();
+    const tareas = await Tarea.find(filtro).sort({ fechaHora: -1, _id: -1 }).populate('analista', 'username').lean();
     return res.json(tareas);
   } catch (err) {
     console.error('❌ Error en GET /tareas:', err);
@@ -452,6 +543,7 @@ app.get('/tareas/:id', async (req, res) => {
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 });
+
 // — Crear tarea
 app.post('/tareas', async (req, res) => {
   const {
@@ -463,7 +555,7 @@ app.post('/tareas', async (req, res) => {
     ticket,
     placa,
     observacion
-  } = req.body;
+  } = req.body || {};
 
   const sanitizedTitulo = sanitizeInput(titulo);
   const sanitizedDescripcion = sanitizeInput(descripcion);
@@ -471,7 +563,16 @@ app.post('/tareas', async (req, res) => {
   const sanitizedPlaca = sanitizeInput(placa);
   const sanitizedObservacion = sanitizeInput(observacion);
 
-  if (!sanitizedTitulo || !sanitizedDescripcion || !sanitizedObservacion || !fechaHora || !analista || !fechaLimite || !ticket || !placa) {
+  if (
+    !sanitizedTitulo ||
+    !sanitizedDescripcion ||
+    !sanitizedObservacion ||
+    !fechaHora ||
+    !analista ||
+    !fechaLimite ||
+    !ticket ||
+    !placa
+  ) {
     return res.status(400).json({ error: 'Todos los campos obligatorios deben estar completos' });
   }
 
@@ -479,7 +580,7 @@ app.post('/tareas', async (req, res) => {
     const nuevaTarea = new Tarea({
       titulo: sanitizedTitulo,
       descripcion: sanitizedDescripcion,
-      fechaHora,
+      fechaHora,           
       analista,
       fechaLimite,
       ticket: sanitizedTicket,
@@ -489,8 +590,10 @@ app.post('/tareas', async (req, res) => {
     await nuevaTarea.save();
 
     // Auditoría
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const xff = (req.headers['x-forwarded-for'] || '').toString();
+    const ip = xff.split(',')[0].trim() || req.ip || req.connection?.remoteAddress || 'desconocida';
     const ruta = req.originalUrl;
+
     await Auditoria.create({
       usuario: req.user._id,
       accion: 'Creación de tarea',
@@ -499,53 +602,216 @@ app.post('/tareas', async (req, res) => {
       ruta
     });
 
+    try {
+      const analistaDoc = await Usuario.findById(analista).lean();
+      if (analistaDoc?.telegramChatId) {
+        await sendMessage(analistaDoc.telegramChatId, msgNuevaAsignacion(nuevaTarea));
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudo enviar Telegram en creación:', e.message);
+    }
+
     return res.status(201).json({ message: 'Tarea creada correctamente', tarea: nuevaTarea });
+
   } catch (err) {
     console.error('❌ Error en POST /tareas:', err);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
-// — Terminar tarea
-app.put('/tareas/terminar/:id', async (req, res) => {
-  try {
-    const t = await Tarea.findById(req.params.id);
-    if (!t) return res.status(404).json({ error: 'Tarea no encontrada' });
-    if (t.estado === 'Finalizado') return res.status(400).json({ error: 'La tarea ya está finalizada' });
 
-    const sanitizedObservacion = sanitizeInput(req.body.observacion || '');
+// Crea/garantiza tareas de mantenimiento para el mes dado
+app.post('/mantenimiento/plan/generar', async (req, res) => {
+  try {
+    const year  = parseInt(req.query.year, 10);
+    const month = parseInt(req.query.month, 10); // 1-12
+    if (!year || !month) {
+      return res.status(400).json({ error: 'year y month son obligatorios (YYYY, MM)' });
+    }
+
+    const { start, end } = monthRange(year, month);
+
+    // 1) Equipos que tocan en el mes o están vencidos
+    const equipos = await Equipo.find({
+      proximoMantenimiento: { $lte: end } // incluye vencidos (< start) y los del mes (<= end)
+    }).lean();
+
+    // 2) Tareas ya creadas para este mes (evitar duplicados)
+    const yaCreadas = await Tarea.find({
+      tipo: 'mantenimiento',
+      fechaHora: { $gte: start, $lte: end }
+    }, { equipo: 1 }).lean();
+    const yaSet = new Set(yaCreadas.map(t => String(t.equipo)));
+
+    // 3) Filtrar solo las que faltan
+    const pendientesCrear = equipos.filter(e => !yaSet.has(String(e._id)));
+
+    // 4) Cortar a 109 (si hay más, el resto quedan para el próximo mes, pero marcamos sobrantes como prioritarios en el carry)
+    const objetivosMes = 109;
+    const aPlanificar  = pendientesCrear.slice(0, objetivosMes);
+    const sobrantes    = pendientesCrear.slice(objetivosMes); // irán como "prioritarios" el próximo mes
+
+    // 5) Analistas
+    const analistas = await pickNightAnalysts();
+    if (analistas.length === 0) {
+      return res.status(400).json({ error: 'No hay analistas para asignar' });
+    }
+
+    // 6) Crear tareas repartidas (round-robin entre 4 analistas)
+    const tareasCreadas = [];
+    for (let i = 0; i < aPlanificar.length; i++) {
+      const e = aPlanificar[i];
+      const a = analistas[i % analistas.length];
+
+      const titulo = `Mantenimiento equipo ${e.nombre} (${e.serial || e.placa || 's/n'})`;
+      const descripcion = [
+        `Mantenimiento preventivo del equipo.`,
+        `Equipo: ${e.marca} ${e.modelo}.`,
+        `Serial/Placa: ${e.serial || e.placa || 'N/D'}.`,
+        `Registre cambios, repuestos y pruebas realizadas.`
+      ].join(' ');
+
+      const fechaLimite = new Date(Math.min(new Date(e.proximoMantenimiento).getTime(), end.getTime())); // tope fin de mes
+      const obs = 'Mantenimiento generado automáticamente por plan mensual. Registro completo de actividades requerido.';
+
+      const t = new Tarea({
+        titulo,
+        descripcion,
+        fechaHora: new Date(),
+        analista: a._id,
+        fechaLimite,
+        ticket: `MANT-${e.serial || e.placa || e._id}`,
+        placa: e.placa || e.serial || '',
+        observacion: obs,
+        tipo: 'mantenimiento',
+        equipo: e._id,
+        prioritario: false,
+      });
+      await t.save();
+      tareasCreadas.push(t);
+    }
+
+    // 7) Marcar los sobrantes para el mes siguiente como "prioritarios"
+    //    No creamos la tarea ahora; se marcarán como prioritarios cuando el endpoint del siguiente mes los cree.
+    const total = {
+      totalEquiposElegibles: equipos.length,
+      creadasEsteMes: tareasCreadas.length,
+      sobrantesParaProximoMes: sobrantes.length
+    };
+
+    return res.json({ message: 'Plan mensual generado', analistas, total, tareasCreadas });
+  } catch (err) {
+    console.error('❌ POST /mantenimiento/plan/generar:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// — Terminar tarea
+app.put("/tareas/terminar/:id", async (req, res) => {
+  try {
+    // 1) Buscar tarea y validar estado
+    const t = await Tarea.findById(req.params.id);
+    if (!t) return res.status(404).json({ error: "Tarea no encontrada" });
+    if (t.estado === "Finalizado") {
+      return res.status(400).json({ error: "La tarea ya está finalizada" });
+    }
+
+    // 2) Historial y cambio de estado
+    const sanitizedObservacion = sanitizeInput(req.body.observacion || "");
+
+    t.observacion = sanitizedObservacion;
+
     const cambio = {
-      accion: 'Finalización',
+      accion: "Finalización",
       analista_anterior: t.analista,
       analista_nuevo: t.analista,
       fechaLimite_anterior: t.fechaLimite,
       fechaLimite_nueva: t.fechaLimite,
       estado_anterior: t.estado,
-      estado_nuevo: 'Finalizado',
+      estado_nuevo: "Finalizado",
       observacion: sanitizedObservacion,
-      fecha: new Date()
+      fecha: new Date(),
     };
 
     t.historial = t.historial || [];
     t.historial.push(cambio);
-    t.estado = 'Finalizado';
+    t.estado = "Finalizado";
+    // Si es una tarea de mantenimiento, actualizar el equipo
+    try {
+      if (t.tipo === "mantenimiento" && t.equipo) {
+        const eq = await Equipo.findById(t.equipo);
+        if (eq) {
+          eq.ultimoMantenimientoFecha = new Date();
+          eq.ultimoMantenimientoPor = req.user?._id || null;
+          eq.ultimoMantenimientoCambios = (req.body.observacion || "").slice(0,1000);
+          eq.recalcularProximo(); // = ultimo + 6 meses
+          await eq.save();
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "⚠️ No se pudo actualizar Equipo al finalizar mantenimiento:",
+        e.message
+      );
+    }
+
     await t.save();
 
-    // Auditoría
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    // 3) Auditoría
+    const xff = (req.headers["x-forwarded-for"] || "").toString();
+    const ip =
+      xff.split(",")[0].trim() ||
+      req.ip ||
+      (req.connection && req.connection.remoteAddress) ||
+      "desconocida";
     const ruta = req.originalUrl;
+
     await Auditoria.create({
       usuario: req.user._id,
-      accion: 'Finalización de tarea',
+      accion: "Finalización de tarea",
       descripcion: `Tarea finalizada: ${t.titulo}`,
       ip,
-      ruta
+      ruta,
     });
 
-    return res.json({ message: 'Tarea finalizada correctamente', tarea: t });
+    if (!t.finalizadaNotificada) {
+      const closedBy =
+        (req.user && (req.user.username || req.user.name)) ||
+        (typeof req.user === "string" ? req.user : "Usuario");
+
+      try {
+        const [analista, jefes] = await Promise.all([
+          Usuario.findById(t.analista, { telegramChatId: 1 }).lean(),
+          Usuario.find(
+            { rol: "jefe", telegramChatId: { $ne: null } },
+            { telegramChatId: 1 }
+          ).lean(),
+        ]);
+
+        const jobs = [];
+        if (analista?.telegramChatId) {
+          jobs.push(
+            sendMessage(analista.telegramChatId, msgFinalizada(t, closedBy))
+          );
+        }
+        for (const j of jefes) {
+          jobs.push(sendMessage(j.telegramChatId, msgFinalizada(t, closedBy)));
+        }
+        await Promise.allSettled(jobs);
+
+        await Tarea.updateOne(
+          { _id: t._id, finalizadaNotificada: { $ne: true } },
+          { $set: { finalizadaNotificada: true } }
+        );
+      } catch (e) {
+        console.warn("⚠️ Aviso finalizada falló:", e.message);
+      }
+    }
+
+    return res.json({ message: "Tarea finalizada correctamente", tarea: t });
   } catch (err) {
-    console.error('❌ Error en PUT /tareas/terminar/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en PUT /tareas/terminar/:id:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
@@ -590,7 +856,11 @@ app.put('/tareas/reasignar/:id', async (req, res) => {
     };
 
     // ✅ Convertir a ObjectId antes de asignar
-    t.analista = Types.ObjectId(analista_nuevo);
+    const analistaId =
+      typeof analista_nuevo === "object" && analista_nuevo._id
+        ? analista_nuevo._id
+        : analista_nuevo;
+    t.analista = new Types.ObjectId(analistaId);
     t.fechaLimite = fechaLimite;
     t.historial = t.historial || [];
     t.historial.push(cambio);
@@ -617,8 +887,6 @@ app.put('/tareas/reasignar/:id', async (req, res) => {
   }
 });
 
-
-
 // — Eliminar tarea
 app.delete('/tareas/:id', async (req, res) => {
   try {
@@ -642,6 +910,96 @@ app.delete('/tareas/:id', async (req, res) => {
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 });
+
+
+// - Crear equipo
+app.post('/equipos', async (req, res) => {
+  try {
+    const {
+      marca, modelo, serial, placa, nombre,
+      fechaCompra,
+      ultimoMantenimientoFecha,
+      ultimoMantenimientoPor,
+      ultimoMantenimientoCambios
+    } = req.body || {};
+
+    if (!marca || !modelo || !serial || !nombre || !fechaCompra) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
+
+    const e = new Equipo({
+      marca, modelo, serial, placa, nombre,
+      fechaCompra,
+      ultimoMantenimientoFecha: ultimoMantenimientoFecha || null,
+      ultimoMantenimientoPor: ultimoMantenimientoPor || null,
+      ultimoMantenimientoCambios: ultimoMantenimientoCambios || ''
+    });
+
+    await e.save();
+    return res.status(201).json({ message: 'Equipo creado', equipo: e });
+  } catch (err) {
+    console.error('❌ POST /equipos:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Listar equipos
+app.get('/equipos', async (_req, res) => {
+  try {
+    const list = await Equipo.find().sort({ createdAt: -1 }).lean();
+    return res.json(list);
+  } catch (err) {
+    console.error('❌ GET /equipos:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Actualizar equipo
+app.put('/equipos/:id', async (req, res) => {
+  try {
+    const e = await Equipo.findById(req.params.id);
+    if (!e) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+    const up = req.body || {};
+    Object.assign(e, up);
+    e.recalcularProximo();
+    await e.save();
+
+    return res.json({ message: 'Equipo actualizado', equipo: e });
+  } catch (err) {
+    console.error('❌ PUT /equipos/:id:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Eliminar equipo
+app.delete('/equipos/:id', async (req, res) => {
+  try {
+    const e = await Equipo.findByIdAndDelete(req.params.id);
+    if (!e) return res.status(404).json({ error: 'Equipo no encontrado' });
+    return res.json({ message: 'Equipo eliminado' });
+  } catch (err) {
+    console.error('❌ DELETE /equipos/:id:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Generar plan de mantenimiento (calculado desde el esquema)
+app.get('/equipos/proximos', async (req, res) => {
+  try {
+    const hoy = new Date();
+
+    const equipos = await Equipo.find({
+      proximoMantenimiento: { $lte: new Date(hoy.getFullYear(), hoy.getMonth() + 1, hoy.getDate()) }
+    }).sort({ proximoMantenimiento: 1 }).lean();
+
+    return res.json(equipos);
+  } catch (err) {
+    console.error("❌ GET /equipos/proximos:", err);
+    return res.status(500).json({ error: "Error generando plan de mantenimiento" });
+  }
+});
+
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 5) Arrancar el servidor

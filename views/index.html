@@ -10,6 +10,11 @@
   <link rel="stylesheet" href="/css/dashboard-enhancements.css" />
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <!-- FullCalendar CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+  <!-- FullCalendar JS -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
 </head>
 <body>
   <!-- =========================
@@ -68,6 +73,12 @@
           <button class="sidebar-btn" onclick="mostrarSeccion('control-usuario')">
             <span class="material-icons">manage_accounts</span><span>Control Usuario</span>
           </button>
+          <button class="sidebar-btn" onclick="mostrarSeccion('inventario')">
+            <span class="material-icons">inventory</span><span>Inventario</span>
+          </button>
+          <button class="sidebar-btn" onclick="mostrarSeccion('plan-mantenimiento')">
+            <span class="material-icons">build</span><span>Mantenimiento</span>
+          </button>
           <button class="sidebar-btn" onclick="mostrarSeccion('informes')">
             <span class="material-icons">insert_chart</span><span>Informes</span>
           </button>
@@ -76,9 +87,21 @@
     </aside>
     <main class="main-content">
       <section id="inicio" class="section active">
-        <div class="center-panel">
-          <img src="/images/images.png" alt="Banner Institucional" class="banner__img" />
+      
+        <div class="banner-contenedor">
+          <img src="/images/banner.jpg" alt="Banner Institucional HIC" class="banner__img-nuevo" />
         </div>
+      
+        <div class="inicio-panel">
+          <div class="calendario-widget">
+            <div id="calendar"></div>
+          </div>
+          <div class="pendientes-card">
+            <h3>📌 Actividades Pendientes</h3>
+            <ul id="lista-pendientes"></ul>
+          </div>
+        </div>
+      
         <section class="apps-card">
           <div class="apps-card-header">
             <h2>Aplicaciones Frecuentes</h2>
@@ -97,61 +120,84 @@
             <a href="https://webmail.fcv.org/" class="app-cell" target="_blank" rel="noopener">
               <img src="/images/zimbra.png" alt="Zimbra" /><span>Zimbra</span>
             </a>
-            <a href="https://sgi.almeraim.com/sgi/?redirect=true&conid=sgifcv" class="app-cell" target="_blank" rel="noopener">
+            <a href="https://sgi.almeraim.com/sgi/?redirect=true&conid=sgifcv" class="app-cell" target="_blank"
+              rel="noopener">
               <img src="/images/almera.png" alt="Almera" /><span>Almera</span>
             </a>
             <a href="http://www.fcv.org/informes" class="app-cell" target="_blank" rel="noopener">
               <img src="/images/informes.png" alt="Informes" /><span>Informes</span>
             </a>
-            <a href="https://mi.fcv.org/" class="app-cell" target="_blank" rel="noopener">
-              <img src="/images/mifcv.png" alt="Informes" /><span>MiFCV</span>
+            <a href="http://172.16.66.129/" class="app-cell" target="_blank" rel="noopener">
+              <img src="/images/apps.png" alt="Apps" /><span>Apps</span>
             </a>
             <a href="https://redcapadm.fcv.org/" class="app-cell" target="_blank" rel="noopener">
-              <img src="/images/redcap.png" alt="Informes" /><span>RedCap</span>
+              <img src="/images/redcap.png" alt="RedCap" /><span>RedCap</span>
             </a>
             <a href="https://www.fcv.org/ContingenciaSAHI/faces/login.xhtml" class="app-cell" target="_blank" rel="noopener">
-              <img src="/images/contingencia.png" alt="Informes" /><span>ContingenciaSAHI</span>
+              <img src="/images/contingencia.png" alt="ContingenciaSAHI" /><span>ContingenciaSAHI</span>
             </a>
             <a href="https://www.fcv.org/DirectorioActivo/" class="app-cell" target="_blank" rel="noopener">
-              <img src="/images/directorioActivo.png" alt="Informes" /><span>DirectorioActivo</span>
+              <img src="/images/directorioActivo.png" alt="DirectorioActivo" /><span>DirectorioActivo</span>
             </a>
           </div>
         </section>
+
       </section>
-      
+
       <section id="tareas" class="section hidden">
-        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+        <button class="back-btn" type="button" onclick="manejarBotonVolver()">← Volver</button>
+      
         <h1>Lista de Actividades</h1>
-        <form class="filtros">
+      
+        <!-- Filtros -->
+        <form class="filtros" onsubmit="return false;">
           <div class="filtros-campos">
             <input type="text" id="filtro-titulo" placeholder="Nombre de la Actividad" />
             <input type="text" id="filtro-ticket" placeholder="Ticket" />
             <input type="text" id="filtro-placa" placeholder="Placa" />
-            <select id="filtro-analista"><option value="">Todos los analistas</option></select>
-            <select id="filtro-estado">
+      
+            <select id="filtro-analista" aria-label="Filtrar por analista">
+              <option value="">Todos los analistas</option>
+            </select>
+      
+            <select id="filtro-estado" aria-label="Filtrar por estado">
               <option value="">Todos los estados</option>
               <option value="Pendiente">Pendiente</option>
               <option value="Finalizado">Finalizado</option>
             </select>
-            <input type="date" id="filtro-fecha-inicio" />
-            <input type="date" id="filtro-fecha-fin" />
+      
+            <input type="date" id="filtro-fecha-inicio" aria-label="Fecha inicio" />
+            <input type="date" id="filtro-fecha-fin" aria-label="Fecha fin" />
+      
             <div class="filtros-botones">
-              <button id="btnAplicarFiltros">Aplicar filtros</button>
-              <button id="btnLimpiarFiltros">Limpiar filtros</button>
+              <button id="btnAplicarFiltros" type="button">Aplicar filtros</button>
+              <button id="btnLimpiarFiltros" type="button">Limpiar filtros</button>
             </div>
           </div>
         </form>
+      
+        <!-- Tabla con scroll interno -->
         <div class="table-container">
-          <table>
+          <table role="table" aria-label="Tabla de actividades">
             <thead>
               <tr>
-                <th>Actividad</th><th>Analista</th><th>Fecha y Hora</th><th>Estado</th><th>Acciones</th>
+                <th scope="col">Actividad</th>
+                <th scope="col">Analista</th>
+                <th scope="col">Fecha y Hora</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
               </tr>
             </thead>
             <tbody id="listaTareas"></tbody>
           </table>
         </div>
-        <div id="paginacionTareas" class="paginacion-tareas"></div>
+      
+        <!-- Paginación sticky -->
+        <div id="paginacionTareas" class="paginacion-tareas">
+          <button id="prevPage" type="button">Anterior</button>
+          <span id="pageInfo">Página 1 de 1</span>
+          <button id="nextPage" type="button">Siguiente</button>
+        </div>
       </section>
 
 <!-- =========================
@@ -249,6 +295,7 @@
           <th>Usuario</th>
           <th>Rol</th>
           <th>Estado</th>
+          <th>Telegram</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -371,6 +418,164 @@
 
 <section id="control-usuario" class="section hidden"></section>
 <section id="informes" class="section hidden"></section>
+
+<!-- ==================== SECCIÓN INVENTARIO ==================== -->
+<section id="inventario" class="section hidden">
+  <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+  <h1>📦 Inventario de Equipos de Cómputo</h1>
+
+  <!-- Estadísticas -->
+  <div id="stats-equipos"></div>
+
+  <!-- Filtros -->
+  <div class="filtros-equipos">
+    <h3>🔍 Filtrar Equipos</h3>
+    <div class="filtros-equipos-grid">
+      <input 
+        type="text" 
+        id="filtro-equipo-nombre" 
+        placeholder="Buscar por nombre..."
+      />
+      <input 
+        type="text" 
+        id="filtro-equipo-serial" 
+        placeholder="Buscar por serial..."
+      />
+      <select id="filtro-equipo-estado">
+        <option value="">Todos los estados</option>
+        <option value="vencido">Mantenimiento Vencido</option>
+        <option value="proximo">Próximos 30 días</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Formulario de Equipo -->
+  <form id="form-equipo" class="task-form">
+    <h3>➕ Agregar / Editar Equipo</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="eq-marca">Marca <span style="color:red;">*</span></label>
+        <input id="eq-marca" type="text" required placeholder="" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-modelo">Modelo <span style="color:red;">*</span></label>
+        <input id="eq-modelo" type="text" required placeholder="" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-serial">Serial <span style="color:red;">*</span></label>
+        <input id="eq-serial" type="text" required placeholder="" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-placa">Placa</label>
+        <input id="eq-placa" type="text" placeholder="" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-nombre">Nombre / Ubicación <span style="color:red;">*</span></label>
+        <input id="eq-nombre" type="text" required placeholder="" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-compra">Fecha de Compra <span style="color:red;">*</span></label>
+        <input id="eq-compra" type="date" required />
+      </div>
+
+      <div class="form-group">
+        <label for="eq-ult-fecha">Fecha Último Mantenimiento</label>
+        <input id="eq-ult-fecha" type="date" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-ult-por">Realizado por (ID Usuario)</label>
+        <input id="eq-ult-por" type="text" placeholder="ID del usuario" />
+      </div>
+      
+      <div class="form-group" style="grid-column: 1/-1;">
+        <label for="eq-ult-cambios">Cambios Realizados</label>
+        <textarea 
+          id="eq-ult-cambios" 
+          rows="3" 
+          placeholder="Describe los cambios, repuestos o mantenimientos realizados..."
+        ></textarea>
+      </div>
+    </div>
+    
+    <button type="submit">Agregar Equipo</button>
+  </form>
+
+  <!-- Tabla de Equipos -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Serial / Placa</th>
+          <th>Fecha Compra</th>
+          <th>Próx. Mantenimiento</th>
+          <th>Último Mantenimiento</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-equipos">
+        <tr>
+          <td colspan="6" style="text-align:center;">Cargando equipos...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== SECCIÓN PLAN DE MANTENIMIENTO ==================== -->
+<section id="plan-mantenimiento" class="section hidden">
+  <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+  <h1>🔧 Plan Mensual de Mantenimiento</h1>
+
+  <!-- Formulario Generar Plan -->
+  <form id="form-plan" class="task-form">
+    <h3>📅 Generar Plan Mensual</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="plan-year">Año</label>
+        <input 
+          type="number" 
+          id="plan-year" 
+          min="2000" 
+          max="2100" 
+          required 
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="plan-month">Mes</label>
+        <select id="plan-month" required>
+          <option value="1">Enero</option>
+          <option value="2">Febrero</option>
+          <option value="3">Marzo</option>
+          <option value="4">Abril</option>
+          <option value="5">Mayo</option>
+          <option value="6">Junio</option>
+          <option value="7">Julio</option>
+          <option value="8">Agosto</option>
+          <option value="9">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
+      </div>
+    </div>
+    
+    <button type="submit">
+      <span class="material-icons">build</span>
+      Generar Plan (109 tareas / 4 analistas)
+    </button>
+  </form>
+
+  <!-- Resumen del Plan Generado -->
+  <div id="plan-resumen" style="display:none;"></div>
+</section>
 
   <!-- Scripts -->
   <script src="/js/script.js"></script>
