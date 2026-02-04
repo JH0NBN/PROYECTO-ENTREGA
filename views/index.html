@@ -7,7 +7,6 @@
 
   <!-- Estilos principales -->
   <link rel="stylesheet" href="/css/styles.css" />
-  <link rel="stylesheet" href="/css/dashboard-enhancements.css" />
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   <!-- FullCalendar CSS -->
@@ -59,7 +58,7 @@
     <aside class="side-nav">
       <h2 class="sidebar-title">Sistemas HIC</h2>
       <div class="sidebar-links-card">
-        <h3 class="sidebar-subtitle">Accesos Directos</h3>
+        <h3 class="sidebar-subtitle">Entrega de Turnos</h3>
         <div class="sidebar-buttons">
           <button class="sidebar-btn" onclick="mostrarSeccion('inicio')">
             <span class="material-icons">home</span><span>Inicio</span>
@@ -72,14 +71,17 @@
           </button>
           <button class="sidebar-btn" onclick="mostrarSeccion('control-usuario')">
             <span class="material-icons">manage_accounts</span><span>Control Usuario</span>
-          </button>
+          </button>        
+        <h3 class="sidebar-subtitle">Mantenimiento</h3>  
+        </div>
+        <div class="sidebar-buttons">
           <button class="sidebar-btn" onclick="mostrarSeccion('inventario')">
             <span class="material-icons">inventory</span><span>Inventario</span>
           </button>
           <button class="sidebar-btn" onclick="mostrarSeccion('plan-mantenimiento')">
-            <span class="material-icons">build</span><span>Mantenimiento</span>
+            <span class="material-icons">build</span><span>Plan Mensual</span>
           </button>
-          <button class="sidebar-btn" onclick="mostrarSeccion('informes')">
+           <button class="sidebar-btn" onclick="mostrarSeccion('informes')">
             <span class="material-icons">insert_chart</span><span>Informes</span>
           </button>
         </div>
@@ -87,6 +89,8 @@
     </aside>
     <main class="main-content">
       <section id="inicio" class="section active">
+
+    
       
         <div class="banner-contenedor">
           <img src="/images/banner.jpg" alt="Banner Institucional HIC" class="banner__img-nuevo" />
@@ -144,11 +148,12 @@
 
       </section>
 
+      <!-- =========================
+        VER ACTIVIDADES
+      ========================= -->
       <section id="tareas" class="section hidden">
-        <button class="back-btn" type="button" onclick="manejarBotonVolver()">← Volver</button>
-      
+        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
         <h1>Lista de Actividades</h1>
-      
         <!-- Filtros -->
         <form class="filtros" onsubmit="return false;">
           <div class="filtros-campos">
@@ -472,14 +477,44 @@
         <label for="eq-placa">Placa</label>
         <input id="eq-placa" type="text" placeholder="" />
       </div>
-      
+
       <div class="form-group">
-        <label for="eq-nombre">Nombre / Ubicación <span style="color:red;">*</span></label>
-        <input id="eq-nombre" type="text" required placeholder="" />
+        <label for="eq-tipo">Tipo de equipo</label>
+        <select id="eq-tipo" required>
+          <option value="">Seleccione un tipo</option>
+          <option value="Computador">Computador</option>
+          <option value="Portátil">Portátil</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="eq-piso">Piso</label>
+        <select id="eq-piso" required>
+          <option value="">Seleccione piso</option>
+        </select>
       </div>
       
       <div class="form-group">
-        <label for="eq-compra">Fecha de Compra <span style="color:red;">*</span></label>
+        <label for="eq-area">Área</label>
+        <select id="eq-area" disabled required>
+          <option value="">Seleccione área</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-subarea">Subárea</label>
+        <select id="eq-subarea" disabled>
+          <option value="">Seleccione subárea (opcional)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="eq-dominio">Dominio<span style="color:red;">*</span></label>
+        <input id="eq-dominio" type="text" required "" />
+      </div>
+      
+      <div class="form-group">
+        <label for="eq-compra">Fecha de Compra<span style="color:red;">*</span></label>
         <input id="eq-compra" type="date" required />
       </div>
 
@@ -489,22 +524,22 @@
       </div>
       
       <div class="form-group">
-        <label for="eq-ult-por">Realizado por (ID Usuario)</label>
+        <label for="eq-ult-por">Realizado por: </label>
         <input id="eq-ult-por" type="text" placeholder="ID del usuario" />
       </div>
       
       <div class="form-group" style="grid-column: 1/-1;">
         <label for="eq-ult-cambios">Cambios Realizados</label>
-        <textarea 
-          id="eq-ult-cambios" 
-          rows="3" 
-          placeholder="Describe los cambios, repuestos o mantenimientos realizados..."
-        ></textarea>
-      </div>
-    </div>
-    
-    <button type="submit">Agregar Equipo</button>
-  </form>
+        <textarea id="eq-ult-cambios" rows="3"
+          placeholder="Describe los cambios, repuestos o mantenimientos realizados..."></textarea>
+        </div>
+        </div>
+        
+        <button type="submit">Agregar Equipo</button>
+        <button type="button" class="btn-cancelar" style="display:none" onclick="cancelarEdicionEquipo(event)">
+          Cancelar
+        </button>
+    </form>
 
   <!-- Tabla de Equipos -->
   <div class="table-container">
@@ -513,6 +548,8 @@
         <tr>
           <th>Equipo</th>
           <th>Serial / Placa</th>
+          <th>Ubicación</th>
+          <th>Dominio</th>
           <th>Fecha Compra</th>
           <th>Próx. Mantenimiento</th>
           <th>Último Mantenimiento</th>
@@ -534,20 +571,16 @@
   <h1>🔧 Plan Mensual de Mantenimiento</h1>
 
   <!-- Formulario Generar Plan -->
-  <form id="form-plan" class="task-form">
+  <form id="form-plan-mensual" class="task-form plan-form">
     <h3>📅 Generar Plan Mensual</h3>
     <div class="form-grid">
+      <!-- Año -->
       <div class="form-group">
         <label for="plan-year">Año</label>
-        <input 
-          type="number" 
-          id="plan-year" 
-          min="2000" 
-          max="2100" 
-          required 
-        />
+        <input type="number" id="plan-year" min="2000" max="2100" required />
       </div>
-      
+
+      <!-- Mes -->
       <div class="form-group">
         <label for="plan-month">Mes</label>
         <select id="plan-month" required>
@@ -565,11 +598,24 @@
           <option value="12">Diciembre</option>
         </select>
       </div>
+
+      <!-- Analistas -->
+      <div class="form-group">
+        <label>Analistas</label>
+        <div class="multi-select" id="plan-analistas" tabindex="0">
+          <div class="multi-select-header">
+            <span id="analistas-label">Seleccionar analistas</span>
+            <span class="material-icons">expand_more</span>
+          </div>
+          <div class="multi-select-options">
+            <!-- Analistas dinámicos -->
+          </div>
+        </div>
+      </div>
     </div>
-    
-    <button type="submit">
-      <span class="material-icons">build</span>
-      Generar Plan (109 tareas / 4 analistas)
+    <!-- Botón -->
+    <button type="submit" class="btn-primary">
+      Generar Plan Mensual
     </button>
   </form>
 
@@ -578,7 +624,9 @@
 </section>
 
   <!-- Scripts -->
-  <script src="/js/script.js"></script>
-  <script src="/js/main.js"></script>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/main.js" defer></script>
+  
+  
 </body>
 </html>

@@ -12,6 +12,7 @@ const mongoSanitize = require('express-mongo-sanitize')
 const Usuario = require('./models/Usuario');
 const Tarea   = require('./models/Tarea');
 const Equipo = require('./models/Equipo');
+const Ubicacion = require("./models/Ubicacion");
 const { REFUSED } = require('dns');
 const Auditoria = require('./models/Auditoria');
 const { sendMessage,msgProxima, msgVencida, msgNuevaAsignacion, msgReasignacion, msgAmpliacion } = require('./helpers/telegram');
@@ -42,14 +43,49 @@ mongoose.connect('mongodb://localhost:27017/entregas_turnos')
 // ───────────────────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'views')));
+
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "index.html"));
+});
+
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "login.html"));
+});
+
+app.get("/registro", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "registro.html"));
+});
+
 app.use(mongoSanitize());
 
-// validar sesión única
 app.use(async (req, res, next) => {
-  if (["/login", "/registro"].includes(req.path)) return next();
 
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/registro',
+    '/favicon.ico',
+    '/index.html',
+    '/login.html',
+    '/registro.html'
+  ];
+
+  if (
+    req.path.startsWith('/css/') ||
+    req.path.startsWith('/js/') ||
+    req.path.startsWith('/images/') ||
+    req.path.endsWith('.css') ||
+    req.path.endsWith('.js') ||
+    req.path.endsWith('.png') ||
+    req.path.endsWith('.jpg') ||
+    req.path.endsWith('.ico') ||
+    publicRoutes.includes(req.path)
+  ) {
+    return next();
+  }
+  
   const userId = req.header('x-user-id');
   const sessionToken = req.header('x-session-token');
 
@@ -619,90 +655,118 @@ app.post('/tareas', async (req, res) => {
   }
 });
 
-
-// Crea/garantiza tareas de mantenimiento para el mes dado
-app.post('/mantenimiento/plan/generar', async (req, res) => {
+// =========================================================
+// GENERAR PLAN MENSUAL DE MANTENIMIENTO
+// =========================================================
+app.post("/mantenimiento/plan/generar", async (req, res) => {
   try {
-    const year  = parseInt(req.query.year, 10);
-    const month = parseInt(req.query.month, 10); // 1-12
-    if (!year || !month) {
-      return res.status(400).json({ error: 'year y month son obligatorios (YYYY, MM)' });
+    const year = parseInt(req.query.year, 10);
+    const month = parseInt(req.query.month, 10);
+    const { analistas } = req.body;
+
+    // -------------------------------
+    // Validaciones
+    // -------------------------------
+    if (!year || year < 2000 || year > 2100) {
+      return res.status(400).json({ error: "Año inválido" });
     }
 
-    const { start, end } = monthRange(year, month);
-
-    // 1) Equipos que tocan en el mes o están vencidos
-    const equipos = await Equipo.find({
-      proximoMantenimiento: { $lte: end } // incluye vencidos (< start) y los del mes (<= end)
-    }).lean();
-
-    // 2) Tareas ya creadas para este mes (evitar duplicados)
-    const yaCreadas = await Tarea.find({
-      tipo: 'mantenimiento',
-      fechaHora: { $gte: start, $lte: end }
-    }, { equipo: 1 }).lean();
-    const yaSet = new Set(yaCreadas.map(t => String(t.equipo)));
-
-    // 3) Filtrar solo las que faltan
-    const pendientesCrear = equipos.filter(e => !yaSet.has(String(e._id)));
-
-    // 4) Cortar a 109 (si hay más, el resto quedan para el próximo mes, pero marcamos sobrantes como prioritarios en el carry)
-    const objetivosMes = 109;
-    const aPlanificar  = pendientesCrear.slice(0, objetivosMes);
-    const sobrantes    = pendientesCrear.slice(objetivosMes); // irán como "prioritarios" el próximo mes
-
-    // 5) Analistas
-    const analistas = await pickNightAnalysts();
-    if (analistas.length === 0) {
-      return res.status(400).json({ error: 'No hay analistas para asignar' });
+    if (!month || month < 1 || month > 12) {
+      return res.status(400).json({ error: "Mes inválido" });
     }
 
-    // 6) Crear tareas repartidas (round-robin entre 4 analistas)
-    const tareasCreadas = [];
-    for (let i = 0; i < aPlanificar.length; i++) {
-      const e = aPlanificar[i];
-      const a = analistas[i % analistas.length];
+    if (!Array.isArray(analistas) || analistas.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Debe seleccionar al menos un analista" });
+    }
 
-      const titulo = `Mantenimiento equipo ${e.nombre} (${e.serial || e.placa || 's/n'})`;
-      const descripcion = [
-        `Mantenimiento preventivo del equipo.`,
-        `Equipo: ${e.marca} ${e.modelo}.`,
-        `Serial/Placa: ${e.serial || e.placa || 'N/D'}.`,
-        `Registre cambios, repuestos y pruebas realizadas.`
-      ].join(' ');
+    // -------------------------------
+    // Rango completo del mes
+    // -------------------------------
+    const fechaInicio = new Date(year, month - 1, 1, 0, 0, 0);
+    const fechaFin = new Date(year, month, 0, 23, 59, 59);
 
-      const fechaLimite = new Date(Math.min(new Date(e.proximoMantenimiento).getTime(), end.getTime())); // tope fin de mes
-      const obs = 'Mantenimiento generado automáticamente por plan mensual. Registro completo de actividades requerido.';
+    // -------------------------------
+    // Evitar duplicar plan mensual
+    // -------------------------------
+    const existePlan = await Tarea.exists({
+      tipo: "mantenimiento",
+      fechaInicio: fechaInicio,
+      fechaLimite: fechaFin,
+    });
 
-      const t = new Tarea({
-        titulo,
-        descripcion,
-        fechaHora: new Date(),
-        analista: a._id,
-        fechaLimite,
-        ticket: `MANT-${e.serial || e.placa || e._id}`,
-        placa: e.placa || e.serial || '',
-        observacion: obs,
-        tipo: 'mantenimiento',
-        equipo: e._id,
-        prioritario: false,
+    if (existePlan) {
+      return res.status(409).json({
+        error: "Ya existe un plan de mantenimiento para este mes",
       });
-      await t.save();
-      tareasCreadas.push(t);
     }
 
-    // 7) Marcar los sobrantes para el mes siguiente como "prioritarios"
-    //    No creamos la tarea ahora; se marcarán como prioritarios cuando el endpoint del siguiente mes los cree.
-    const total = {
-      totalEquiposElegibles: equipos.length,
-      creadasEsteMes: tareasCreadas.length,
-      sobrantesParaProximoMes: sobrantes.length
-    };
+    // -------------------------------
+    // Equipos que requieren mantenimiento
+    // -------------------------------
+    const equipos = await Equipo.find({
+      activo: true,
+      requiereMantenimiento: true,
+    });
 
-    return res.json({ message: 'Plan mensual generado', analistas, total, tareasCreadas });
+    if (!equipos.length) {
+      return res.json({
+        analistas: [],
+        total: {
+          totalEquiposElegibles: 0,
+          creadasEsteMes: 0,
+          sobrantesParaProximoMes: 0,
+        },
+      });
+    }
+
+    // -------------------------------
+    // Asignación equitativa (round-robin)
+    // SOLO entre analistas seleccionados
+    // -------------------------------
+    let idx = 0;
+    const tareasCreadas = [];
+
+    for (const equipo of equipos) {
+      const analistaAsignadoId = analistas[idx % analistas.length];
+      idx++;
+
+      const tarea = await Tarea.create({
+        titulo: `Mantenimiento ${equipo.marca} ${equipo.modelo}`,
+        descripcion: `Mantenimiento preventivo del equipo ${
+          equipo.serial || equipo.placa || ""
+        }`,
+        tipo: "mantenimiento",
+
+        equipo: equipo._id,
+        analista: analistaAsignadoId,
+
+        fechaInicio: fechaInicio,
+        fechaLimite: fechaFin,
+
+        estado: "pendiente",
+        creadaPorPlanMensual: true,
+      });
+
+      tareasCreadas.push(tarea);
+    }
+    // -------------------------------
+    // Resumen para frontend
+    // -------------------------------
+    return res.json({
+      analistas: analistas.map((id) => ({ _id: id })),
+      total: {
+        totalEquiposElegibles: equipos.length,
+        creadasEsteMes: tareasCreadas.length,
+        sobrantesParaProximoMes: 0,
+      },
+    });
   } catch (err) {
-    console.error('❌ POST /mantenimiento/plan/generar:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error generando plan mensual:", err);
+    return res
+      .status(500)
+      .json({ error: "Error interno al generar plan mensual" });
   }
 });
 
@@ -829,7 +893,7 @@ app.put('/tareas/reasignar/:id', async (req, res) => {
 
     const { analista_nuevo, fechaLimite, observacion } = req.body;
 
-    // ✅ Validar que todos los campos existan y sean válidos
+    // Validar que todos los campos existan y sean válidos
     if (
       typeof analista_nuevo !== "string" || !analista_nuevo.trim() ||
       typeof fechaLimite !== "string" || !fechaLimite.trim() ||
@@ -838,7 +902,7 @@ app.put('/tareas/reasignar/:id', async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios o están vacíos' });
     }
 
-    // ✅ Validar que el analista nuevo exista (opcional pero recomendable)
+    // Validar que el analista nuevo exista (opcional pero recomendable)
     const analistaExiste = await Usuario.exists({ _id: analista_nuevo });
     if (!analistaExiste) {
       return res.status(400).json({ error: 'El analista especificado no existe' });
@@ -855,7 +919,7 @@ app.put('/tareas/reasignar/:id', async (req, res) => {
       fecha: new Date()
     };
 
-    // ✅ Convertir a ObjectId antes de asignar
+    //Convertir a ObjectId antes de asignar
     const analistaId =
       typeof analista_nuevo === "object" && analista_nuevo._id
         ? analista_nuevo._id
@@ -913,33 +977,51 @@ app.delete('/tareas/:id', async (req, res) => {
 
 
 // - Crear equipo
-app.post('/equipos', async (req, res) => {
+app.post("/equipos", async (req, res) => {
   try {
     const {
-      marca, modelo, serial, placa, nombre,
+      marca,
+      modelo,
+      serial,
+      placa,
+      tipo,
+      ubicacion,
+      dominio,
       fechaCompra,
       ultimoMantenimientoFecha,
       ultimoMantenimientoPor,
-      ultimoMantenimientoCambios
+      ultimoMantenimientoCambios,
     } = req.body || {};
 
-    if (!marca || !modelo || !serial || !nombre || !fechaCompra) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    if (!marca || !modelo || !serial || !ubicacion || !dominio || !fechaCompra) {
+      return res
+        .status(400)
+        .json({ error: "Faltan campos obligatorios" });
     }
 
-    const e = new Equipo({
-      marca, modelo, serial, placa, nombre,
+    const equipo = new Equipo({
+      marca,
+      modelo,
+      serial,
+      placa,
+      tipo,
+      ubicacion,
+      dominio,
       fechaCompra,
       ultimoMantenimientoFecha: ultimoMantenimientoFecha || null,
       ultimoMantenimientoPor: ultimoMantenimientoPor || null,
-      ultimoMantenimientoCambios: ultimoMantenimientoCambios || ''
+      ultimoMantenimientoCambios: ultimoMantenimientoCambios || "",
     });
 
-    await e.save();
-    return res.status(201).json({ message: 'Equipo creado', equipo: e });
+    await equipo.save();
+
+    return res.status(201).json({
+      message: "Equipo creado",
+      equipo,
+    });
   } catch (err) {
-    console.error('❌ POST /equipos:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ POST /equipos:", err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -955,20 +1037,25 @@ app.get('/equipos', async (_req, res) => {
 });
 
 // Actualizar equipo
-app.put('/equipos/:id', async (req, res) => {
+app.put("/equipos/:id", async (req, res) => {
   try {
-    const e = await Equipo.findById(req.params.id);
-    if (!e) return res.status(404).json({ error: 'Equipo no encontrado' });
+    const equipo = await Equipo.findById(req.params.id);
+    if (!equipo) {
+      return res.status(404).json({ error: "Equipo no encontrado" });
+    }
 
-    const up = req.body || {};
-    Object.assign(e, up);
-    e.recalcularProximo();
-    await e.save();
+    // Actualizar campos permitidos
+    Object.assign(equipo, req.body || {});
 
-    return res.json({ message: 'Equipo actualizado', equipo: e });
+    await equipo.save();
+
+    return res.json({
+      message: "Equipo actualizado",
+      equipo,
+    });
   } catch (err) {
-    console.error('❌ PUT /equipos/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ PUT /equipos/:id:", err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -1000,10 +1087,43 @@ app.get('/equipos/proximos', async (req, res) => {
   }
 });
 
+app.get("/ubicaciones/pisos", async (_req, res) => {
+  try {
+    const pisos = await Ubicacion.find({
+      tipo: "piso",
+      activa: true,
+    })
+      .sort({ nombre: 1 })
+      .lean();
+
+    res.json(pisos);
+  } catch (err) {
+    console.error("❌ GET /ubicaciones/pisos:", err);
+    res.status(500).json({ error: "Error obteniendo pisos" });
+  }
+});
+
+app.get("/ubicaciones/:id/hijos", async (req, res) => {
+  try {
+    const hijos = await Ubicacion.find({
+      padre: req.params.id,
+      activa: true,
+    })
+      .sort({ nombre: 1 })
+      .lean();
+
+    res.json(hijos);
+  } catch (err) {
+    console.error("❌ GET /ubicaciones/:id/hijos:", err);
+    res.status(500).json({ error: "Error obteniendo ubicaciones hijas" });
+  }
+});
+
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 5) Arrancar el servidor
 // ───────────────────────────────────────────────────────────────────────────────
+
 https.createServer(options, app).listen(port, () => {
   console.log(`🚀 Servidor HTTPS corriendo en https://localhost:${port}`);
 });

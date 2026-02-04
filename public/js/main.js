@@ -4,8 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   -------------------------------------------------------------------------- */
   const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
   const path = location.pathname;
-  const isAuthPage =
-    path.endsWith("login.html") || path.endsWith("registro.html");
+  const isAuthPage = path.endsWith("/login") || path.endsWith("/registro");
   const maxSessionTime = 30 * 60 * 1000;
 
   if (currentUser.id) {
@@ -15,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (now - loginTime > maxSessionTime) {
       console.warn("⏰ Sesión expirada");
       sessionStorage.removeItem("user");
-      if (!isAuthPage) window.location.href = "login.html";
+      if (!isAuthPage) window.location.href = "/login";
       return;
     } else {
       currentUser.loginTime = now;
@@ -24,15 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (!currentUser.id && !isAuthPage) {
-    return void (window.location.href = "login.html");
+    return void (window.location.href = "/login");
   }
   if (currentUser.id && isAuthPage) {
-    return void (window.location.href = "index.html");
+    return void (window.location.href = "/");
   }
-  //setInterval(() => {
-    //location.reload();
-  //}, 600 * 1000);
-  
+
   /* --------------------------------------------------------------------------
      1. Menú usuario por hover
   -------------------------------------------------------------------------- */
@@ -57,26 +53,17 @@ document.addEventListener("DOMContentLoaded", () => {
      2. Ocultar contrtol usuario
   -------------------------------------------------------------------------- */
   const btnControl =
-    document.querySelector("button.sidebar-btn[onclick=\"mostrarSeccion('control-usuarios')\"]") ||
-    document.querySelector("button.sidebar-btn[onclick=\"mostrarSeccion('control-usuario')\"]");
+    document.querySelector(
+      "button.sidebar-btn[onclick=\"mostrarSeccion('control-usuarios')\"]",
+    ) ||
+    document.querySelector(
+      "button.sidebar-btn[onclick=\"mostrarSeccion('control-usuario')\"]",
+    );
 
-  const canManageUsers = ['admin', 'jefe'].includes(currentUser?.rol);
+  const canManageUsers = ["admin", "jefe"].includes(currentUser?.rol);
 
   if (btnControl) {
-    btnControl.style.display = canManageUsers ? '' : 'none';
-  }
-
-  /* --------------------------------------------------------------------------
-     2.1 Validar sesión (login/registro)
-  -------------------------------------------------------------------------- */
-  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-  const isAuth = path.endsWith("login.html") || path.endsWith("registro.html");
-
-  if (!user.id && !isAuth) {
-    return void (window.location.href = "login.html");
-  }
-  if (user.id && isAuth) {
-    return void (window.location.href = "index.html");
+    btnControl.style.display = canManageUsers ? "" : "none";
   }
 
   /* --------------------------------------------------------------------------
@@ -112,44 +99,25 @@ document.addEventListener("DOMContentLoaded", () => {
      4. Navegación entre secciones
   -------------------------------------------------------------------------- */
   const __baseMostrarSeccion = (id) => {
-  document.querySelectorAll(".section").forEach((sec) => {
-    sec.classList.toggle("active", sec.id === id);
-    sec.classList.toggle("hidden", sec.id !== id);
-  });
-
-  if (id === "tareas") {
-    cargarAnalistas();
-    cargarTareas();
-  } else if (id === "crear-tarea") {
-    initCrearTarea();
-  } else if (id === "control-usuario") {
-    if (!window.__usuariosYaCargados) {
-      cargarUsuarios();
-      window.__usuariosYaCargados = true;
-    }
-  } else {
-    window.__usuariosYaCargados = false;
-  }
-};
-
-window.mostrarSeccion = (id) => {
-  __baseMostrarSeccion(id);
-
-  if (id === "informes") {
-    try { initInformes?.(); } catch {}
-  }
-  if (id === "mantenimiento") {
-    try { initMantenimiento?.(); } catch {}
-  }
-  if (id === "inicio") {
-    requestAnimationFrame(() => {
-      try { initCalendarioTareas?.(); } catch {}
-      try { cargarTareas?.(); } catch {}
-      setTimeout(() => { try { window.__calendarRef?.updateSize?.(); } catch {} }, 0);
+    document.querySelectorAll(".section").forEach((sec) => {
+      sec.classList.toggle("active", sec.id === id);
+      sec.classList.toggle("hidden", sec.id !== id);
     });
-  }
-};
 
+    if (id === "tareas") {
+      cargarAnalistas();
+      cargarTareas();
+    } else if (id === "crear-tarea") {
+      initCrearTarea();
+    } else if (id === "control-usuario") {
+      if (!window.__usuariosYaCargados) {
+        cargarUsuarios();
+        window.__usuariosYaCargados = true;
+      }
+    } else {
+      window.__usuariosYaCargados = false;
+    }
+  };
 
   window.manejarBotonVolver = () => {
     const actual = document.querySelector(".section.active")?.id;
@@ -179,25 +147,96 @@ window.mostrarSeccion = (id) => {
   }
 
   async function secureFetch(url, options = {}) {
-    const authHeaders = buildAuthHeaders();
+    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+    const authHeaders =
+      user?.id && user?.sessionToken
+        ? {
+            "x-user-id": user.id,
+            "x-session-token": user.sessionToken,
+          }
+        : {};
 
-    if (options.headers) {
-      options.headers = { ...authHeaders, ...options.headers };
-    } else {
-      options.headers = authHeaders;
-    }
+    // Combinar headers
+    options.headers = {
+      "Content-Type": "application/json",
+      ...authHeaders,
+      ...options.headers,
+    };
 
     const res = await fetch(url, options);
 
     if (res.status === 401) {
       console.warn("⚠️ Sesión inválida detectada. Cerrando sesión.");
       sessionStorage.removeItem("user");
-      window.location.href = "login.html";
+      window.location.href = "/login";
       throw new Error("Sesión inválida");
     }
-
     return res;
   }
+
+  // ===== MOSTRAR SECCIÓN
+  window.mostrarSeccion = async function (id) {
+    __baseMostrarSeccion(id);
+
+    // INFORMES
+    if (id === "informes") {
+      try {
+        initInformes?.();
+      } catch (e) {
+        console.error("Error initInformes:", e);
+      }
+    }
+
+    // PLAN DE MANTENIMIENTO
+    if (id === "plan-mantenimiento") {
+      try {
+        await initMantenimiento?.();
+        bindFormPlan?.();
+        cargarAnalistasPlan?.();
+      } catch (e) {
+        console.error("Error plan mantenimiento:", e);
+      }
+    }
+
+    // EQUIPOS
+    if (id === "equipos") {
+      try {
+        bindFormEquipo?.();
+        cargarPisos?.();
+        bindUbicacionesEquipos?.();
+        requestAnimationFrame(() => {
+          cargarEquipos?.();
+        });
+      } catch (e) {
+        console.error("Error equipos:", e);
+      }
+    }
+
+    // INICIO (CALENDARIO + TAREAS)
+    if (id === "inicio") {
+      const calendarEl = document.getElementById("calendar");
+
+      try {
+        if (!window.__calendarRef && calendarEl) {
+          const resp = await secureFetch("/tareas", { method: "GET" });
+          const tareas = await resp.json();
+          initCalendarioTareas(tareas);
+        }
+      } catch (e) {
+        console.error("Error cargando calendario:", e);
+      }
+
+      requestAnimationFrame(() => {
+        try {
+          window.__calendarRef?.updateSize?.();
+        } catch {}
+      });
+
+      try {
+        cargarTareas?.();
+      } catch {}
+    }
+  };
 
   /* --------------------------------------------------------------------------
      5.Login 
@@ -206,6 +245,7 @@ window.mostrarSeccion = (id) => {
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       if (!username || !password) {
@@ -225,10 +265,10 @@ window.mostrarSeccion = (id) => {
             username: data.user.username,
             rol: data.user.rol,
             sessionToken: data.user.sessionToken,
-            loginTime: Date.now(), 
+            loginTime: Date.now(),
           };
           sessionStorage.setItem("user", JSON.stringify(userData));
-          window.location.href = "index.html";
+          window.location.href = "/";
         } else {
           alert("❌ " + (data.error || "Credenciales incorrectas"));
         }
@@ -264,7 +304,7 @@ window.mostrarSeccion = (id) => {
         if (res.ok) {
           alert("✅ " + data.message);
           formRegistro.reset();
-          setTimeout(() => (window.location.href = "login.html"), 1500);
+          setTimeout(() => (window.location.href = "/login"), 1500);
         } else {
           throw new Error(data.error);
         }
@@ -279,7 +319,7 @@ window.mostrarSeccion = (id) => {
   -------------------------------------------------------------------------- */
   document.getElementById("btnCerrarSesion")?.addEventListener("click", () => {
     sessionStorage.removeItem("user");
-    window.location.href = "login.html";
+    window.location.href = "/login";
   });
 
   /* --------------------------------------------------------------------------
@@ -298,7 +338,7 @@ window.mostrarSeccion = (id) => {
       .slice(0, 16);
     document.getElementById("fechaHora").value = localISO;
     document.getElementById("display-fechaHora").value = new Date(
-      localISO
+      localISO,
     ).toLocaleString();
 
     const businessDays = 3;
@@ -317,10 +357,10 @@ window.mostrarSeccion = (id) => {
     const contadorObservacion = document.getElementById("contador-observacion");
 
     const campoReasignarObservacion = document.getElementById(
-      "reasignar-observacion"
+      "reasignar-observacion",
     );
     const contadorReasignarObservacion = document.getElementById(
-      "contador-observacion-reasignar"
+      "contador-observacion-reasignar",
     );
 
     function actualizarContador() {
@@ -345,7 +385,7 @@ window.mostrarSeccion = (id) => {
     if (campoReasignarObservacion) {
       campoReasignarObservacion.addEventListener(
         "input",
-        actualizarContadorReasignarObservacion
+        actualizarContadorReasignarObservacion,
       );
     }
 
@@ -378,7 +418,7 @@ window.mostrarSeccion = (id) => {
         !placa
       ) {
         return alert(
-          "⚠️ Complete todos los campos obligatorios para guardar la actividad."
+          "⚠️ Complete todos los campos obligatorios para guardar la actividad.",
         );
       }
 
@@ -388,7 +428,7 @@ window.mostrarSeccion = (id) => {
 
       if (observacion && observacion.length < 100) {
         return alert(
-          "⚠️ La observación debe tener al menos 100 caracteres si la incluye."
+          "⚠️ La observación debe tener al menos 100 caracteres si la incluye.",
         );
       }
 
@@ -449,7 +489,7 @@ window.mostrarSeccion = (id) => {
       flHidden.value = originalISO;
 
       document.getElementById("display-reasignar-fechaLimite").value = new Date(
-        tarea.fechaLimite
+        tarea.fechaLimite,
       ).toLocaleDateString();
 
       document.getElementById("formReasignar").dataset.id = id;
@@ -469,7 +509,7 @@ window.mostrarSeccion = (id) => {
       const analista_nuevo =
         document.getElementById("reasignar-analista").value;
       const fechaLimite = document.getElementById(
-        "reasignar-fechaLimite"
+        "reasignar-fechaLimite",
       ).value;
       const observacion = document
         .getElementById("reasignar-observacion")
@@ -583,7 +623,7 @@ window.mostrarSeccion = (id) => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nuevaFecha }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -597,7 +637,7 @@ window.mostrarSeccion = (id) => {
       cargarTareas();
 
       const seccionDetalles = document.querySelector(
-        "#detalles-tarea.section.active"
+        "#detalles-tarea.section.active",
       );
       if (seccionDetalles) {
         verDetallesTarea(tareaSeleccionada);
@@ -623,12 +663,14 @@ window.mostrarSeccion = (id) => {
     btnConfirmar.addEventListener("click", enviarAmpliacion);
   }
 
- // - Mostrar actividades
+  // - Mostrar actividades
   let currentPage = 1;
-  const tasksPerPage = 9;
+  let tasksPerPage = calcularTasksPorPantalla();
   let allTasks = [];
 
   function mostrarTareasPaginadas() {
+    tasksPerPage = calcularTasksPorPantalla();
+    
     const tb = document.getElementById("listaTareas");
     tb.innerHTML = "";
 
@@ -660,25 +702,27 @@ window.mostrarSeccion = (id) => {
 
       if (t.estado === "Pendiente") {
         acciones.push(
-          `<button onclick="terminarTarea('${t._id}')">Terminar</button>`
+          `<button onclick="terminarTarea('${t._id}')">Terminar</button>`,
         );
         acciones.push(
-          `<button onclick="abrirFormularioReasignar('${t._id}')">Reasignar</button>`
+          `<button onclick="abrirFormularioReasignar('${t._id}')">Reasignar</button>`,
         );
 
         if (["admin", "jefe"].includes(currentUser.rol)) {
           acciones.push(
-            `<button onclick="mostrarFormularioAmpliarFecha('${t._id}')">Ampliar Fecha</button>`
+            `<button onclick="mostrarFormularioAmpliarFecha('${t._id}')">Aplazar</button>`,
           );
         }
       }
 
       acciones.push(
-        `<button onclick="verDetallesTarea('${t._id}')">Ver Detalles</button>`
+        `<button onclick="verDetallesTarea('${t._id}')">Detalles</button>`,
       );
       tr.innerHTML = `
       <td>${t.titulo}</td>
-      <td>${t.analista?.username || analistasMap[t.analista] || "Sin asignar"}</td>
+      <td>${
+        t.analista?.username || analistasMap[t.analista] || "Sin asignar"
+      }</td>
       <td>${new Date(t.fechaHora).toLocaleString()}</td>
       <td>${t.estado || "Pendiente"}</td>
       <td class="filtros-botones">${acciones.join("")}</td>
@@ -690,6 +734,23 @@ window.mostrarSeccion = (id) => {
     //- actualizar paginacion
     actualizarBotonesPaginacion();
   }
+
+  function calcularTasksPorPantalla() {
+    const tableContainer = document.querySelector(".table-container");
+    if (!tableContainer) return 8;
+    const containerHeight = tableContainer.clientHeight;
+    const rowHeight = 48;
+    const reservedSpace = 60;
+    const filas = Math.floor((containerHeight - reservedSpace) / rowHeight);
+    // Seguridad: mínimo y máximo
+    return Math.max(5, Math.min(filas, 20));
+  }
+
+  window.addEventListener("resize", () => {
+    tasksPerPage = calcularTasksPorPantalla();
+    currentPage = 1;
+    mostrarTareasPaginadas();
+  });
 
   function actualizarBotonesPaginacion() {
     const paginationContainer = document.getElementById("paginacionTareas");
@@ -748,13 +809,11 @@ window.mostrarSeccion = (id) => {
 
       if (document.getElementById("calendar")) {
         initCalendarioTareas(allTasks);
-
       }
 
       if (document.getElementById("lista-pendientes")) {
         mostrarPendientesWidget(allTasks);
       }
-
     } catch (err) {
       console.error("Error al cargar tareas:", err);
       alert("❌ Error al cargar tareas");
@@ -869,14 +928,14 @@ window.mostrarSeccion = (id) => {
             <input class="tg-input" data-user-id="${
               u._id
             }" placeholder="chat id" value="${
-          u.telegramChatId || ""
-        }" style="width: 140px" />
+              u.telegramChatId || ""
+            }" style="width: 140px" />
             <button class="tg-save" data-user-id="${u._id}">Guardar</button>
           </td>
           <td>
             <button onclick="editarUsuario('${u._id}','${
-          u.username
-        }')">✏️ Editar</button>
+              u.username
+            }')">✏️ Editar</button>
             <button onclick="restablecerClave('${u._id}')">🔑 Reset</button>
             <button onclick="toggleUsuario('${u._id}',${u.isActive})">
               ${u.isActive ? "🔒 Inactivar" : "✅ Activar"}
@@ -908,22 +967,26 @@ window.mostrarSeccion = (id) => {
       document.querySelectorAll(".tg-save").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const userId = btn.dataset.userId;
-          const input = document.querySelector(`.tg-input[data-user-id="${userId}"]`);
-          const chatId = (input?.value || '').trim();
+          const input = document.querySelector(
+            `.tg-input[data-user-id="${userId}"]`,
+          );
+          const chatId = (input?.value || "").trim();
           try {
-            const resp = await secureFetch(`${API_BASE}/usuarios/${userId}/telegram`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ telegramChatId: chatId }),
-            });
+            const resp = await secureFetch(
+              `${API_BASE}/usuarios/${userId}/telegram`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ telegramChatId: chatId }),
+              },
+            );
             if (!resp.ok) throw new Error();
-            alert('✅ Telegram actualizado');
+            alert("✅ Telegram actualizado");
           } catch (e) {
-            alert('❌ No se pudo guardar el Telegram chat id');
+            alert("❌ No se pudo guardar el Telegram chat id");
           }
         });
-     });
-
+      });
     } catch (err) {
       console.error("Error al cargar usuarios:", err);
       tbody.innerHTML = "";
@@ -944,7 +1007,11 @@ window.mostrarSeccion = (id) => {
         ["detalles-titulo", "titulo"],
         ["detalles-descripcion", "descripcion"],
         ["detalles-fechaHora", () => new Date(t.fechaHora).toLocaleString()],
-        ["detalles-analista", () => t.analista?.username || analistasMap[t.analista] || "Sin asignar"],
+        [
+          "detalles-analista",
+          () =>
+            t.analista?.username || analistasMap[t.analista] || "Sin asignar",
+        ],
         ["detalles-fechaLimite", "fechaLimite"],
         ["detalles-ticket", "ticket"],
         ["detalles-placa", "placa"],
@@ -998,10 +1065,10 @@ window.mostrarSeccion = (id) => {
     const modalFinalizar = document.getElementById("modal-terminar-tarea");
     const contadorFinalizar = document.getElementById("contador-finalizar");
     const btnConfirmarFinalizar = document.getElementById(
-      "btnConfirmarFinalizar"
+      "btnConfirmarFinalizar",
     );
     const btnCancelarFinalizar = document.getElementById(
-      "btnCancelarFinalizar"
+      "btnCancelarFinalizar",
     );
 
     obsInputFinalizar.addEventListener("input", () => {
@@ -1023,7 +1090,7 @@ window.mostrarSeccion = (id) => {
           {
             method: "PUT",
             body: JSON.stringify({ observacion }),
-          }
+          },
         );
         if (!res.ok) {
           const { error } = await res.json();
@@ -1082,11 +1149,11 @@ window.mostrarSeccion = (id) => {
       const tareas = await res.json();
 
       const ordenadas = (Array.isArray(tareas) ? tareas : []).sort((a, b) => {
-      const da = new Date(a.fechaHora || a.createdAt || 0).getTime();
-      const db = new Date(b.fechaHora || b.createdAt || 0).getTime();
-      return db - da; // más nuevas primero
+        const da = new Date(a.fechaHora || a.createdAt || 0).getTime();
+        const db = new Date(b.fechaHora || b.createdAt || 0).getTime();
+        return db - da; // más nuevas primero
       });
-      
+
       allTasks = Array.isArray(tareas) ? tareas : [];
       currentPage = 1;
       mostrarTareasPaginadas();
@@ -1219,7 +1286,7 @@ window.mostrarSeccion = (id) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ password: nuevaClave }),
-        }
+        },
       );
 
       if (!res.ok) throw new Error();
@@ -1283,7 +1350,7 @@ window.mostrarSeccion = (id) => {
         });
       })
       .catch((err) =>
-        console.error("Error al cargar analistas para informe:", err)
+        console.error("Error al cargar analistas para informe:", err),
       );
 
     const form = document.getElementById("formInformes");
@@ -1319,29 +1386,6 @@ window.mostrarSeccion = (id) => {
       }
     });
   }
-
-  // 2) Llamar al inicio
-  const oldMostrar = window.mostrarSeccion;
-  window.mostrarSeccion = (id) => {
-  oldMostrar(id);
-
-  if (id === 'informes') {
-    initInformes?.();
-  }
-
-  if (id === 'mantenimiento') {
-    initMantenimiento?.();
-  }
-
-  if (id === 'inicio') {
-    requestAnimationFrame(() => {
-      try { initCalendarioTareas?.(); } catch {}
-      try { cargarTareas?.(); } catch {}
-      setTimeout(() => { try { window.__calendarRef?.updateSize?.(); } catch {} }, 0);
-    });
-  }
-};
-
 
   /* --------------------------------------------------------------------------
      10. Mostrar Tareas
@@ -1395,567 +1439,749 @@ window.mostrarSeccion = (id) => {
     calendarEl._fullCalendar = calendar;
     window.__calendarRef = calendar;
   }
-  const __oldMostrarSeccion = window.mostrarSeccion || function () {};
-  window.mostrarSeccion = async function (id) {
-    __oldMostrarSeccion(id);
 
-    if (id === "inicio") {
-      const calendarEl = document.getElementById("calendar");
-      if (!calendarEl?._fullCalendar) {
-        try {
-          const resp = await secureFetch(`${API_BASE}/tareas`, { method: "GET" });
-          const tareas = await resp.json();
-          initCalendarioTareas(tareas);
-        } catch (e) {
-          console.error("No se pudo cargar tareas para el calendario:", e);
-        }
-      }
-      requestAnimationFrame(() => {
-        try {
-          if (window.__calendarRef) {
-            window.__calendarRef.updateSize();
-          } else if (calendarEl?._fullCalendar) {
-            calendarEl._fullCalendar.updateSize();
-          }
-        } catch (e) {
-          try {
-            calendarEl?._fullCalendar?.render();
-          } catch {}
-        }
-      });
-    }
-  };
-/* --------------------------------------------------------------------------
+  /* --------------------------------------------------------------------------
    Mostrar actividades pendientes
 -------------------------------------------------------------------------- */
-function mostrarPendientesWidget(tareas) {
-  const contenedor = document.getElementById("lista-pendientes");
-  if (!contenedor) return;
+  function mostrarPendientesWidget(tareas) {
+    const contenedor = document.getElementById("lista-pendientes");
+    if (!contenedor) return;
 
-  const pendientes = tareas
-    .filter(t => t.estado === "Pendiente")
-    .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora))
-    .slice(0, 10);
+    const pendientes = tareas
+      .filter((t) => t.estado === "Pendiente")
+      .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora))
+      .slice(0, 10);
 
-  contenedor.innerHTML = "";
+    contenedor.innerHTML = "";
 
-  if (pendientes.length === 0) {
-    contenedor.innerHTML = `<li>✅ No hay tareas pendientes</li>`;
-    return;
-  }
+    if (pendientes.length === 0) {
+      contenedor.innerHTML = `<li>✅ No hay tareas pendientes</li>`;
+      return;
+    }
 
-  pendientes.forEach(t => {
-    const fecha = new Date(t.fechaHora).toLocaleDateString("es-CO", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    });
+    pendientes.forEach((t) => {
+      const fecha = new Date(t.fechaHora).toLocaleDateString("es-CO", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 
-    const responsable = t.analista?.username || "Sin asignar";
+      const responsable = t.analista?.username || "Sin asignar";
 
-    const li = document.createElement("li");
-    li.style.cursor = "pointer";
-    li.title = "Ver detalle";
-    li.innerHTML = `
+      const li = document.createElement("li");
+      li.style.cursor = "pointer";
+      li.title = "Ver detalle";
+      li.innerHTML = `
       <strong>${responsable}</strong><br/>
       <span>${t.titulo}</span><br/>
       <small>${fecha}</small>
     `;
-    li.addEventListener("click", () => verDetallesTarea(t._id));
-    contenedor.appendChild(li);
-  });
-}
+      li.addEventListener("click", () => verDetallesTarea(t._id));
+      contenedor.appendChild(li);
+    });
+  }
 
-/* --------------------------------------------------------------------------
+  /* --------------------------------------------------------------------------
    Crear plan mensual
 -------------------------------------------------------------------------- */
-function monthRange(year, month/*1-12*/) {
-  const start = new Date(Date.UTC(year, month-1, 1, 0, 0, 0));
-  const end   = new Date(Date.UTC(year, month, 0, 23, 59, 59)); // fin del mes
-  return { start, end };
-}
-
-async function pickNightAnalysts() {
-  const list = await Usuario.find({ rol: 'analista' }, 'username').limit(4).lean();
-  if (list.length < 4) return list; 
-  return list;
-}
-
-// ================== MANTENIMIENTO  ==================
-
-let equiposData = [];
-let equipoEnEdicion = null;
-
-async function initMantenimiento() {
-  bindFormEquipo();
-  bindFormPlan();
-  bindFiltrosEquipos();
-  await cargarEquipos();
-  actualizarEstadisticas();
-}
-
-// ==================== FORMULARIO EQUIPO ====================
-
-function bindFormEquipo() {
-  const form = document.getElementById('form-equipo');
-  if (!form || form.__bound) return;
-
-  form.addEventListener('submit', guardarEquipo);
-  
-  // Agregar validación en tiempo real
-  const campos = ['eq-marca', 'eq-modelo', 'eq-serial', 'eq-nombre'];
-  campos.forEach(id => {
-    const input = document.getElementById(id);
-    if (input) {
-      input.addEventListener('input', () => validarCampo(input));
-    }
-  });
-
-  // Botón cancelar edición
-  const btnCancelar = document.createElement('button');
-  btnCancelar.type = 'button';
-  btnCancelar.textContent = 'Cancelar Edición';
-  btnCancelar.className = 'btn-cancelar';
-  btnCancelar.style.display = 'none';
-  btnCancelar.onclick = cancelarEdicionEquipo;
-  form.appendChild(btnCancelar);
-
-  form.__bound = true;
-}
-
-function validarCampo(input) {
-  const valor = input.value.trim();
-  if (!valor && input.hasAttribute('required')) {
-    input.style.borderColor = '#ef4444';
-    return false;
-  } else {
-    input.style.borderColor = '';
-    return true;
-  }
-}
-
-function validarFormularioEquipo() {
-  const campos = {
-    'eq-marca': 'Marca',
-    'eq-modelo': 'Modelo',
-    'eq-serial': 'Serial',
-    'eq-nombre': 'Nombre/Ubicación',
-    'eq-compra': 'Fecha de Compra'
-  };
-
-  const errores = [];
-
-  for (const [id, nombre] of Object.entries(campos)) {
-    const input = document.getElementById(id);
-    if (!input.value.trim()) {
-      errores.push(`El campo "${nombre}" es obligatorio`);
-      input.style.borderColor = '#ef4444';
-    }
+  function monthRange(year, month /*1-12*/) {
+    const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+    const end = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+    return { start, end };
   }
 
-  // Validar formato de fecha
-  const fechaCompra = document.getElementById('eq-compra').value;
-  if (fechaCompra && new Date(fechaCompra) > new Date()) {
-    errores.push('La fecha de compra no puede ser futura');
+  async function pickNightAnalysts() {
+    const list = await Usuario.find({ rol: "analista" }, "username")
+      .limit(4)
+      .lean();
+    if (list.length < 4) return list;
+    return list;
   }
 
-  return errores;
-}
+  // ================== MANTENIMIENTO  ==================
 
-async function guardarEquipo(e) {
-  if (e && e.preventDefault) e.preventDefault();
+  async function initMantenimiento() {
+    if (initMantenimiento.__iniciado) return;
+    initMantenimiento.__iniciado = true;
 
-  const errores = validarFormularioEquipo();
-  if (errores.length > 0) {
-    mostrarNotificacion(errores.join("\n"), "error");
-    return;
-  }
+    bindFormPlan?.();
+    bindFiltrosEquipos?.();
 
-  const form = document.getElementById("form-equipo");
-  const btn = form.querySelector("button[type='submit']");
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "Guardando...";
-
-  const payload = {
-    marca: document.getElementById("eq-marca").value.trim(),
-    modelo: document.getElementById("eq-modelo").value.trim(),
-    serial: document.getElementById("eq-serial").value.trim(),
-    placa: document.getElementById("eq-placa").value.trim(),
-    nombre: document.getElementById("eq-nombre").value.trim(),
-    fechaCompra: document.getElementById("eq-compra").value,
-    ultimoMantenimientoFecha: document.getElementById("eq-ult-fecha").value || null,
-    ultimoMantenimientoPor: document.getElementById("eq-ult-por").value || null,
-    ultimoMantenimientoCambios: document.getElementById("eq-ult-cambios").value.trim()
-  };
-
-  const id = form.dataset.id;
-  const method = id ? "PUT" : "POST";
-  const url = id ? `/equipos/${id}` : `/equipos`;
-
-  try {
-    console.info("[guardarEquipo] Enviando:", method, url, payload);
-    const res = await secureFetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    console.info("[guardarEquipo] Status:", res.status);
-
-    // Intentar parsear body
-    let body;
-    try {
-      body = await res.json();
-    } catch (parseErr) {
-      body = null;
-    }
-
-    if (!res.ok) {
-      const mensaje = (body && (body.error || body.message)) || `HTTP ${res.status}`;
-      throw new Error(mensaje);
-    }
-
-    // OK
-    mostrarNotificacion(`✅ Equipo ${id ? "actualizado" : "creado"} correctamente`, "success");
-    limpiarFormularioEquipo();
     await cargarEquipos();
-    actualizarEstadisticas();
-
-  } catch (err) {
-    console.error("[guardarEquipo] Error:", err);
-    // Mostrar mensaje explícito al usuario
-    mostrarNotificacion(`❌ ${err.message}`, "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
+    actualizarEstadisticas?.();
   }
-}
 
+  // ==================== FORMULARIO EQUIPO ====================
 
+  async function guardarEquipo(e) {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
-function limpiarFormularioEquipo() {
-  const form = document.getElementById('form-equipo');
-  form.reset();
-  delete form.dataset.id;
-  equipoEnEdicion = null;
-  
-  const btnCancelar = form.querySelector('.btn-cancelar');
-  if (btnCancelar) btnCancelar.style.display = 'none';
-  
-  const btnSubmit = form.querySelector('button[type="submit"]');
-  btnSubmit.textContent = 'Agregar Equipo';
-  
-  // Limpiar bordes de validación
-  form.querySelectorAll('input').forEach(input => {
-    input.style.borderColor = '';
-  });
-}
+    console.log("🔧 Iniciando guardarEquipo");
 
-function cancelarEdicionEquipo() {
-  if (equipoEnEdicion && confirm('¿Desea cancelar la edición?')) {
-    limpiarFormularioEquipo();
+    const form = document.getElementById("form-equipo");
+    if (!form) {
+      console.error("❌ Formulario no encontrado");
+      return false;
+    }
+
+    // ===== VALIDACIONES =====
+    const errores = [];
+
+    const marca = document.getElementById("eq-marca")?.value.trim();
+    const modelo = document.getElementById("eq-modelo")?.value.trim();
+    const serial = document.getElementById("eq-serial")?.value.trim();
+    const placa = document.getElementById("eq-placa")?.value.trim();
+    const tipo = document.getElementById("eq-tipo")?.value.trim();
+
+    const pisoSel = document.getElementById("eq-piso");
+    const areaSel = document.getElementById("eq-area");
+    const subSel = document.getElementById("eq-subarea");
+
+    const ubicacion = {
+      piso: pisoSel.options[pisoSel.selectedIndex]?.text || "",
+      area: areaSel.options[areaSel.selectedIndex]?.text || "",
+      subarea: subSel.value ? subSel.options[subSel.selectedIndex]?.text : null,
+    };
+
+    const dominio = document.getElementById("eq-dominio")?.value.trim();
+    const fechaCompra = document.getElementById("eq-compra")?.value;
+
+    if (!marca) errores.push("La marca es obligatoria");
+    if (!modelo) errores.push("El modelo es obligatorio");
+    if (!serial) errores.push("El serial es obligatorio");
+    if (!ubicacion) errores.push("La ubicación es obligatoria");
+    if (!dominio) errores.push("El dominio es obligatorio");
+    if (!fechaCompra) errores.push("La fecha de compra es obligatoria");
+
+    if (errores.length > 0) {
+      mostrarNotificacion(errores.join("\n"), "error");
+      return false;
+    }
+
+    console.log("📅 Fecha compra value:", fechaCompra);
+
+    // ===== PAYLOAD =====
+    const payload = {
+      marca,
+      modelo,
+      serial,
+      placa,
+      tipo,
+      ubicacion,
+      dominio,
+      fechaCompra,
+      ultimoMantenimientoFecha:
+        document.getElementById("eq-ult-fecha")?.value || null,
+      ultimoMantenimientoPor:
+        document.getElementById("eq-ult-por")?.value || null,
+      ultimoMantenimientoCambios:
+        document.getElementById("eq-ult-cambios")?.value.trim() || "",
+    };
+
+    console.log("📤 Payload:", payload);
+
+    const id = form.dataset.id;
+    const method = id ? "PUT" : "POST";
+    const url = id ? `/equipos/${id}` : `/equipos`;
+
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn ? btn.textContent : "";
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Guardando...";
+    }
+
+    try {
+      console.log(`🌐 Enviando: ${method} ${url}`);
+
+      const res = await secureFetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      console.log("📥 Respuesta:", res.status);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || `Error ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log(" Equipo guardado:", data);
+
+      mostrarNotificacion(
+        ` Equipo ${id ? "actualizado" : "creado"} correctamente`,
+        "success",
+      );
+
+      function limpiarFormularioEquipo() {
+        const form = document.getElementById("form-equipo");
+        if (!form) return;
+
+        form.reset();
+        delete form.dataset.id;
+
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) btn.textContent = "Guardar Equipo";
+
+        console.log("🧹 Formulario de equipo limpiado");
+      }
+
+      limpiarFormularioEquipo();
+      await cargarEquipos();
+      actualizarEstadisticas();
+    } catch (err) {
+      console.error("❌ Error en guardarEquipo:", err);
+      mostrarNotificacion(`❌ ${err.message}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    return false;
   }
-}
 
-// ==================== CARGAR Y RENDERIZAR EQUIPOS ====================
+  // ==================== CARGAR Y RENDERIZAR EQUIPOS ====================
 
-async function cargarEquipos() {
-  const tbody = document.getElementById("tbl-equipos");
-  if (!tbody) return;
+  async function cargarEquipos() {
+    console.log("📦 Cargando equipos...");
 
-  tbody.innerHTML = `
+    const tbody = document.getElementById("tbl-equipos");
+    if (!tbody) return;
+
+    tbody.innerHTML = `
     <tr>
       <td colspan="6" style="text-align:center;">Cargando equipos...</td>
     </tr>
   `;
 
-  try {
-    const res = await secureFetch(`/equipos`, { method: "GET" });
+    try {
+      const res = await secureFetch(`/equipos`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Error cargando equipos" }));
-      throw new Error(err.error);
-    }
+      console.log("📥 Respuesta equipos:", res.status);
 
-    const data = await res.json();
-    equiposData = Array.isArray(data) ? data : [];
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}`);
+      }
 
-    renderEquipos(equiposData);
-    actualizarEstadisticas();
+      const data = await res.json();
+      console.log(` ${data.length} equipos cargados`);
 
-  } catch (e) {
-    console.error("Error cargando equipos:", e);
-    tbody.innerHTML = `
+      equiposData = Array.isArray(data) ? data : [];
+      renderEquipos(equiposData);
+      actualizarEstadisticas();
+    } catch (err) {
+      console.error("❌ Error cargando equipos:", err);
+      tbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align:center; color:#ef4444;">
-          ❌ No se pudieron cargar los equipos
+          ❌ Error cargando equipos: ${err.message}
         </td>
-      </tr>`;
-    mostrarNotificacion("❌ No se pudieron cargar los equipos", "error");
-  }
-}
-
-function renderEquipos(lista) {
-  const tbody = document.getElementById('tbl-equipos');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-
-  if (!Array.isArray(lista) || lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay equipos registrados</td></tr>';
-    return;
-  }
-
-  lista.forEach(equipo => {
-    const tr = document.createElement('tr');
-
-    const compra = equipo.fechaCompra
-      ? new Date(equipo.fechaCompra).toLocaleDateString('es-CO')
-      : '—';
-
-    const proximo = equipo.proximoMantenimiento
-      ? formatearFechaConEstado(equipo.proximoMantenimiento)
-      : '—';
-
-    const ultimo = equipo.ultimoMantenimientoFecha
-      ? new Date(equipo.ultimoMantenimientoFecha).toLocaleDateString('es-CO')
-      : '—';
-
-    const estadoClase = obtenerEstadoMantenimiento(equipo.proximoMantenimiento);
-    if (estadoClase) tr.classList.add(estadoClase);
-
-    tr.innerHTML = `
-      <td>
-        <strong>${equipo.nombre || '—'}</strong><br/>
-        <small style="color:#666;">${equipo.marca || ''} ${equipo.modelo || ''}</small>
-      </td>
-      <td>
-        ${equipo.serial || '—'}
-        ${equipo.placa ? `<br/><small>Placa: ${equipo.placa}</small>` : ''}
-      </td>
-      <td>${compra}</td>
-      <td>${proximo}</td>
-      <td>${ultimo}</td>
-      <td class="filtros-botones">
-        <button type="button" class="btn-editar" data-id="${equipo._id}">
-          <span class="material-icons">edit</span> Editar
-        </button>
-        <button type="button" class="btn-eliminar" data-id="${equipo._id}">
-          <span class="material-icons">delete</span> Eliminar
-        </button>
-      </td>
+      </tr>
     `;
-
-    // listeners (asegurarnos que elementos existan)
-    const btnEdit = tr.querySelector('.btn-editar');
-    const btnDel = tr.querySelector('.btn-eliminar');
-    if (btnEdit) btnEdit.addEventListener('click', () => editarEquipo(equipo));
-    if (btnDel) btnDel.addEventListener('click', () => eliminarEquipo(equipo._id, equipo.nombre));
-
-    tbody.appendChild(tr);
-  });
-}
-
-function formatearFechaConEstado(fecha) {
-  const d = new Date(fecha);
-  const texto = d.toLocaleDateString('es-CO');
-  const hoy = new Date();
-  const diff = Math.ceil((d - hoy) / (1000 * 60 * 60 * 24));
-
-  if (diff < 0) return `<span style="color:#ef4444;">${texto} (Vencido)</span>`;
-  if (diff <= 30) return `<span style="color:#f59e0b;">${texto} (Próximo)</span>`;
-  return texto;
-}
-
-function obtenerEstadoMantenimiento(fecha) {
-  if (!fecha) return null;
-  
-  const d = new Date(fecha);
-  const hoy = new Date();
-  const diff = Math.ceil((d - hoy) / (1000 * 60 * 60 * 24));
-
-  if (diff < 0) return 'status-red';
-  if (diff <= 30) return 'status-yellow';
-  return null;
-}
-
-function editarEquipo(equipo) {
-  equipoEnEdicion = equipo;
-  
-  document.getElementById('eq-marca').value = equipo.marca || '';
-  document.getElementById('eq-modelo').value = equipo.modelo || '';
-  document.getElementById('eq-serial').value = equipo.serial || '';
-  document.getElementById('eq-placa').value = equipo.placa || '';
-  document.getElementById('eq-nombre').value = equipo.nombre || '';
-  document.getElementById('eq-compra').value = equipo.fechaCompra 
-    ? equipo.fechaCompra.slice(0, 10) 
-    : '';
-
-  document.getElementById('eq-ult-fecha').value = equipo.ultimoMantenimientoFecha 
-    ? equipo.ultimoMantenimientoFecha.slice(0, 10) 
-    : '';
-  document.getElementById('eq-ult-por').value = equipo.ultimoMantenimientoPor || '';
-  document.getElementById('eq-ult-cambios').value = equipo.ultimoMantenimientoCambios || '';
-
-  const form = document.getElementById('form-equipo');
-  form.dataset.id = equipo._id;
-  
-  const btnSubmit = form.querySelector('button[type="submit"]');
-  btnSubmit.textContent = 'Actualizar Equipo';
-  
-  const btnCancelar = form.querySelector('.btn-cancelar');
-  if (btnCancelar) btnCancelar.style.display = 'inline-block';
-
-  // Scroll al formulario
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-async function eliminarEquipo(id, nombre) {
-  if (!confirm(`¿Está seguro de eliminar el equipo "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-    return;
+      mostrarNotificacion(`❌ Error cargando equipos: ${err.message}`, "error");
+    }
   }
 
-  try {
-    const res = await secureFetch(`/equipos/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar equipo');
-    
-    mostrarNotificacion('✅ Equipo eliminado correctamente', 'success');
-    await cargarEquipos();
-    actualizarEstadisticas();
-    
-  } catch (err) {
-    console.error('Error al eliminar:', err);
-    mostrarNotificacion('❌ No se pudo eliminar el equipo', 'error');
-  }
-}
+  function renderEquipos(lista) {
+    const tbody = document.getElementById("tbl-equipos");
+    if (!tbody) return;
+    tbody.innerHTML = "";
 
-// ==================== FILTROS DE EQUIPOS ====================
-
-function bindFiltrosEquipos() {
-  const filtroNombre = document.getElementById('filtro-equipo-nombre');
-  const filtroSerial = document.getElementById('filtro-equipo-serial');
-  const filtroEstado = document.getElementById('filtro-equipo-estado');
-
-  if (filtroNombre) filtroNombre.addEventListener('input', aplicarFiltrosEquipos);
-  if (filtroSerial) filtroSerial.addEventListener('input', aplicarFiltrosEquipos);
-  if (filtroEstado) filtroEstado.addEventListener('change', aplicarFiltrosEquipos);
-}
-
-function aplicarFiltrosEquipos() {
-  const nombre = document.getElementById('filtro-equipo-nombre')?.value.toLowerCase() || '';
-  const serial = document.getElementById('filtro-equipo-serial')?.value.toLowerCase() || '';
-  const estado = document.getElementById('filtro-equipo-estado')?.value || '';
-
-  const filtrados = equiposData.filter(e => {
-    const matchNombre = !nombre || e.nombre.toLowerCase().includes(nombre);
-    const matchSerial = !serial || (e.serial && e.serial.toLowerCase().includes(serial));
-    
-    let matchEstado = true;
-    if (estado === 'vencido') {
-      matchEstado = e.proximoMantenimiento && new Date(e.proximoMantenimiento) < new Date();
-    } else if (estado === 'proximo') {
-      const diff = Math.ceil((new Date(e.proximoMantenimiento) - new Date()) / (1000 * 60 * 60 * 24));
-      matchEstado = diff >= 0 && diff <= 30;
+    if (!Array.isArray(lista) || lista.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" style="text-align:center;">No hay equipos registrados</td></tr>';
+      return;
     }
 
-    return matchNombre && matchSerial && matchEstado;
+    lista.forEach((equipo) => {
+      const tr = document.createElement("tr");
+
+      const compra = equipo.fechaCompra
+        ? new Date(equipo.fechaCompra).toLocaleDateString("es-CO")
+        : "—";
+
+      const proximo = equipo.proximoMantenimiento
+        ? formatearFechaConEstado(equipo.proximoMantenimiento)
+        : "—";
+
+      const ultimo = equipo.ultimoMantenimientoFecha
+        ? new Date(equipo.ultimoMantenimientoFecha).toLocaleDateString("es-CO")
+        : "—";
+
+      const estadoClase = obtenerEstadoMantenimiento(
+        equipo.proximoMantenimiento,
+      );
+      if (estadoClase) tr.classList.add(estadoClase);
+
+      function formatearUbicacion(u) {
+        if (!u) return "—";
+        return [u.piso, u.area, u.subarea].filter(Boolean).join(" / ");
+      }
+
+      tr.innerHTML = `
+    <!-- 1. Equipo -->
+    <td>
+      ${equipo.marca || "—"}<br/>
+      ${equipo.modelo || ""}
+    </td>
+
+    <!-- 2. Serial / Placa -->
+    <td>
+      ${equipo.serial || "—"}
+      ${equipo.placa ? `<br/>Placa: ${equipo.placa}` : ""}
+    </td>
+
+    <!-- 3. Ubicación -->
+    <td>${formatearUbicacion(equipo.ubicacion)}</td>
+
+    <!-- 4. Dominio -->
+    <td>${equipo.dominio || "—"}</td>
+
+    <!-- 5. Fecha compra -->
+    <td>${compra}</td>
+
+    <!-- 6. Próximo mantenimiento -->
+    <td>${proximo}</td>
+
+    <!-- 7. Último mantenimiento -->
+    <td>${ultimo}</td>
+
+    <!-- 8. Acciones -->
+    <td class="filtros-botones">
+      <button type="button" class="btn-editar" data-id="${equipo._id}">
+        <span class="material-icons">edit</span>
+      </button>
+      <button type="button" class="btn-eliminar" data-id="${equipo._id}">
+        <span class="material-icons">delete</span>
+      </button>
+    </td>
+  `;
+
+      // listeners
+      const btnEdit = tr.querySelector(".btn-editar");
+      const btnDel = tr.querySelector(".btn-eliminar");
+      if (btnEdit)
+        btnEdit.addEventListener("click", () => editarEquipo(equipo));
+      if (btnDel)
+        btnDel.addEventListener("click", () =>
+          eliminarEquipo(equipo._id, equipo.nombre),
+        );
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function formatearFechaConEstado(fecha) {
+    const d = new Date(fecha);
+    const texto = d.toLocaleDateString("es-CO");
+    const hoy = new Date();
+    const diff = Math.ceil((d - hoy) / (1000 * 60 * 60 * 24));
+
+    if (diff < 0)
+      return `<span style="color:#ef4444;">${texto} (Vencido)</span>`;
+    if (diff <= 30)
+      return `<span style="color:#f59e0b;">${texto} (Próximo)</span>`;
+    return texto;
+  }
+
+  function obtenerEstadoMantenimiento(fecha) {
+    if (!fecha) return null;
+
+    const d = new Date(fecha);
+    const hoy = new Date();
+    const diff = Math.ceil((d - hoy) / (1000 * 60 * 60 * 24));
+
+    if (diff < 0) return "status-red";
+    if (diff <= 30) return "status-yellow";
+    return null;
+  }
+
+  //EDITAR EQUIPO
+
+  document.addEventListener("submit", (e) => {
+    if (!e.target || e.target.id !== "form-equipo") return;
+
+    // Botón cancelar no debe enviar
+    if (e.submitter?.classList.contains("btn-cancelar")) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    guardarEquipo(e);
   });
 
-  renderEquipos(filtrados);
-}
+  function editarEquipo(equipo) {
+    equipoEnEdicion = equipo;
 
-// ==================== PLAN MENSUAL ====================
+    document.getElementById("eq-marca").value = equipo.marca || "";
+    document.getElementById("eq-modelo").value = equipo.modelo || "";
+    document.getElementById("eq-serial").value = equipo.serial || "";
+    document.getElementById("eq-placa").value = equipo.placa || "";
+    document.getElementById("eq-dominio").value = equipo.dominio || "";
+    document.getElementById("eq-compra").value = equipo.fechaCompra
+      ? equipo.fechaCompra.slice(0, 10)
+      : "";
 
-function bindFormPlan() {
-  const form = document.getElementById('form-plan');
-  if (!form || form.__bound) return;
+    document.getElementById("eq-ult-fecha").value =
+      equipo.ultimoMantenimientoFecha
+        ? equipo.ultimoMantenimientoFecha.slice(0, 10)
+        : "";
+    document.getElementById("eq-ult-por").value =
+      equipo.ultimoMantenimientoPor || "";
+    document.getElementById("eq-ult-cambios").value =
+      equipo.ultimoMantenimientoCambios || "";
 
-  form.addEventListener('submit', generarPlanMensual);
-  
-  // Valores por defecto: mes actual
-  const now = new Date();
-  document.getElementById('plan-year').value = now.getFullYear();
-  document.getElementById('plan-month').value = now.getMonth() + 1;
-  
-  form.__bound = true;
-}
+    const form = document.getElementById("form-equipo");
+    form.dataset.id = equipo._id;
 
-async function generarPlanMensual(e) {
-  e.preventDefault();
-  
-  const year = parseInt(document.getElementById('plan-year').value, 10);
-  const month = parseInt(document.getElementById('plan-month').value, 10);
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    const btnCancelar = form.querySelector(".btn-cancelar");
 
-  // Validaciones
-  if (!year || year < 2000 || year > 2100) {
-    mostrarNotificacion('⚠️ Año inválido', 'error');
-    return;
+    btnSubmit.textContent = "Actualizar Equipo";
+    btnSubmit.style.display = "inline-flex";
+
+    if (btnCancelar) {
+      btnCancelar.style.display = "inline-flex";
+    }
+
+    precargarUbicacion(equipo);
   }
-  if (!month || month < 1 || month > 12) {
-    mostrarNotificacion('⚠️ Mes inválido', 'error');
-    return;
-  }
 
-  const form = e.target;
-  const btnSubmit = form.querySelector('button[type="submit"]');
-  const textoOriginal = btnSubmit.textContent;
-  
-  btnSubmit.disabled = true;
-  btnSubmit.innerHTML = '<span class="material-icons spinning">refresh</span> Generando plan...';
+  async function precargarUbicacion(equipo) {
+    if (!equipo.ubicacion) return;
 
-  try {
-    const res = await secureFetch(
-      `/mantenimiento/plan/generar?year=${year}&month=${month}`, 
-      { method: 'POST' }
+    const pisoSel = document.getElementById("eq-piso");
+    const areaSel = document.getElementById("eq-area");
+    const subSel = document.getElementById("eq-subarea");
+
+    // Seleccionar piso por texto
+    const pisoOpt = [...pisoSel.options].find(
+      (o) => o.text === equipo.ubicacion.piso,
     );
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.error || 'Error al generar plan');
+    if (!pisoOpt) return;
+
+    pisoSel.value = pisoOpt.value;
+    await cargarAreas(pisoOpt.value);
+
+    // Seleccionar área
+    const areaOpt = [...areaSel.options].find(
+      (o) => o.text === equipo.ubicacion.area,
+    );
+    if (!areaOpt) return;
+
+    areaSel.value = areaOpt.value;
+    await cargarSubareas(areaOpt.value);
+
+    // Seleccionar subárea (si existe)
+    if (equipo.ubicacion.subarea) {
+      const subOpt = [...subSel.options].find(
+        (o) => o.text === equipo.ubicacion.subarea,
+      );
+      if (subOpt) subSel.value = subOpt.value;
+    }
+  }
+
+  document.getElementById("btn-cancelar-equipo")?.classList.remove("hidden");
+
+  // CANCELAR EDICIÓN EQUIPO
+
+  window.cancelarEdicionEquipo = function (e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
 
-    mostrarResumenPlan(data, month, year);
-    mostrarNotificacion('✅ Plan mensual generado correctamente', 'success');
-    
-    // Actualizar notificaciones y tareas si están en esa sección
-    try { 
-      if (typeof cargarNotificaciones === 'function') {
-        cargarNotificaciones(); 
-      }
-    } catch {}
-    
-    try { 
-      if (document.querySelector('#tareas.section.active') && typeof cargarTareas === 'function') {
-        cargarTareas(); 
-      }
-    } catch {}
+    console.log("🚫 Edición de equipo cancelada");
 
-  } catch (err) {
-    console.error('Error al generar plan:', err);
-    mostrarNotificacion(`❌ ${err.message}`, 'error');
-  } finally {
-    btnSubmit.disabled = false;
-    btnSubmit.innerHTML = textoOriginal;
+    const form = document.getElementById("form-equipo");
+    if (!form) return;
+
+    // Limpiar formulario
+    form.reset();
+
+    // Quitar modo edición
+    equipoEnEdicion = null;
+    delete form.dataset.id;
+
+    // Restaurar botón submit
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    if (btnSubmit) {
+      btnSubmit.textContent = "Agregar Equipo";
+      btnSubmit.classList.remove("btn-actualizar");
+      btnSubmit.classList.add("btn-guardar");
+      btnSubmit.disabled = false;
+    }
+
+    // Ocultar botón cancelar
+    const btnCancelar = form.querySelector(".btn-cancelar");
+    if (btnCancelar) {
+      btnCancelar.style.display = "none";
+    }
+
+    // Reset selects
+    document.getElementById("eq-area").innerHTML =
+      '<option value="">Seleccione área</option>';
+    document.getElementById("eq-area").disabled = true;
+
+    document.getElementById("eq-subarea").innerHTML =
+      '<option value="">Seleccione subárea</option>';
+    document.getElementById("eq-subarea").disabled = true;
+
+    cargarEquipos();
+  };
+
+  // ELIMINAR EQUIPO
+  async function eliminarEquipo(id, nombre) {
+    const confirmar = confirm(
+      `🗑️ Eliminar equipo\n\n` +
+        `Vas a eliminar el siguiente equipo:\n` +
+        `"${nombre}"\n\n` +
+        `⚠️ Esta acción es permanente y no se puede deshacer.\n\n` +
+        `¿Deseas continuar?`,
+    );
+
+    if (!confirmar) return;
+
+    try {
+      const res = await secureFetch(`/equipos/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar equipo");
+
+      const form = document.getElementById("form-equipo");
+      if (form && form.dataset.id === id) {
+        cancelarEdicionEquipo();
+      }
+
+      mostrarNotificacion("Equipo eliminado correctamente", "success");
+      await cargarEquipos();
+      actualizarEstadisticas();
+    } catch (err) {
+      console.error("Error al eliminar:", err);
+      mostrarNotificacion("No se pudo eliminar el equipo", "error");
+    }
   }
-}
 
-function mostrarResumenPlan(data, month, year) {
-  const box = document.getElementById('plan-resumen');
-  if (!box) return;
+  // ==================== FILTROS DE EQUIPOS ====================
 
-  const analistas = (data.analistas || [])
-    .map(a => a.username)
-    .join(', ') || '—';
+  function bindFiltrosEquipos() {
+    const filtroNombre = document.getElementById("filtro-equipo-nombre");
+    const filtroSerial = document.getElementById("filtro-equipo-serial");
+    const filtroEstado = document.getElementById("filtro-equipo-estado");
 
-  const total = data.total || {};
-  const mesesNombres = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
+    if (filtroNombre)
+      filtroNombre.addEventListener("input", aplicarFiltrosEquipos);
+    if (filtroSerial)
+      filtroSerial.addEventListener("input", aplicarFiltrosEquipos);
+    if (filtroEstado)
+      filtroEstado.addEventListener("change", aplicarFiltrosEquipos);
+  }
 
-  box.style.display = 'block';
-  box.innerHTML = `
+  function aplicarFiltrosEquipos() {
+    const nombre =
+      document.getElementById("filtro-equipo-nombre")?.value.toLowerCase() ||
+      "";
+    const serial =
+      document.getElementById("filtro-equipo-serial")?.value.toLowerCase() ||
+      "";
+    const estado = document.getElementById("filtro-equipo-estado")?.value || "";
+
+    const filtrados = equiposData.filter((e) => {
+      const matchNombre = !nombre || e.nombre.toLowerCase().includes(nombre);
+      const matchSerial =
+        !serial || (e.serial && e.serial.toLowerCase().includes(serial));
+
+      let matchEstado = true;
+      if (estado === "vencido") {
+        matchEstado =
+          e.proximoMantenimiento &&
+          new Date(e.proximoMantenimiento) < new Date();
+      } else if (estado === "proximo") {
+        const diff = Math.ceil(
+          (new Date(e.proximoMantenimiento) - new Date()) /
+            (1000 * 60 * 60 * 24),
+        );
+        matchEstado = diff >= 0 && diff <= 30;
+      }
+
+      return matchNombre && matchSerial && matchEstado;
+    });
+
+    renderEquipos(filtrados);
+  }
+
+  // ==================== PLAN MENSUAL ====================
+
+  function bindFormPlan() {
+    if (document.__planBound) return;
+
+    console.log("✅ bindFormPlan (delegado) ACTIVADO");
+
+    document.addEventListener("submit", (e) => {
+      if (e.target && e.target.id === "form-plan-mensual") {
+        console.log("📨 submit capturado (delegado)");
+        generarPlanMensual(e);
+      }
+    });
+
+    document.__planBound = true;
+  }
+
+  async function cargarAnalistasPlan() {
+    const cont = document.querySelector(
+      "#plan-analistas .multi-select-options",
+    );
+    const label = document.getElementById("analistas-label");
+    const wrapper = document.getElementById("plan-analistas");
+
+    if (!cont || !label || !wrapper) return;
+
+    cont.innerHTML = "<p style='padding:8px'>Cargando...</p>";
+
+    const res = await secureFetch("/analistas");
+    const analistas = await res.json();
+
+    cont.innerHTML = "";
+
+    analistas.forEach((a) => {
+      const div = document.createElement("div");
+      div.className = "analista-option";
+
+      div.innerHTML = `
+    <input type="checkbox" value="${a._id}">
+    <span>${a.username}</span>
+  `;
+      cont.appendChild(div);
+    });
+
+    // Toggle abrir/cerrar
+    wrapper.querySelector(".multi-select-header").onclick = () => {
+      wrapper.classList.toggle("open");
+    };
+
+    // Actualizar texto
+    cont.addEventListener("change", () => {
+      const selected = cont.querySelectorAll("input:checked").length;
+      label.textContent = selected
+        ? `${selected} analista(s) seleccionados`
+        : "Seleccionar analistas";
+    });
+  }
+
+  //GENERAR PLAN MENSUAL
+  async function generarPlanMensual(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log("🚀 generar PlanMensual EJECUTADA");
+
+    const year = parseInt(document.getElementById("plan-year").value, 10);
+    const month = parseInt(document.getElementById("plan-month").value, 10);
+
+    if (!year || year < 2000 || year > 2100) {
+      mostrarNotificacion("⚠️ Año inválido", "error");
+      return;
+    }
+    if (!month || month < 1 || month > 12) {
+      mostrarNotificacion("⚠️ Mes inválido", "error");
+      return;
+    }
+
+    const analistasSeleccionados = Array.from(
+      document.querySelectorAll(
+        "#plan-analistas input[type='checkbox']:checked",
+      ),
+    ).map((cb) => cb.value);
+
+    console.log("👥 Analistas seleccionados:", analistasSeleccionados);
+
+    const form = e.target;
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    const textoOriginal = btnSubmit.textContent;
+
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = "Generando plan...";
+
+    try {
+      const res = await secureFetch(
+        `/mantenimiento/plan/generar?year=${year}&month=${month}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analistas: analistasSeleccionados }),
+        },
+      );
+
+      console.log("📥 Respuesta servidor:", res.status);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al generar plan");
+      }
+
+      console.log("📊 Plan generado:", data);
+
+      mostrarResumenPlan(data, month, year);
+      mostrarNotificacion("Plan mensual generado correctamente", "success");
+
+      // Refrescar tareas si aplica
+      try {
+        if (
+          document.querySelector("#tareas.section.active") &&
+          typeof cargarTareas === "function"
+        ) {
+          cargarTareas();
+        }
+      } catch {}
+    } catch (err) {
+      console.error("❌ Error al generar plan:", err);
+      mostrarNotificacion(`❌ ${err.message}`, "error");
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = textoOriginal;
+    }
+  }
+
+  function mostrarResumenPlan(data, month, year) {
+    const box = document.getElementById("plan-resumen");
+    if (!box) return;
+
+    const analistas =
+      (data.analistas || []).map((a) => a.username).join(", ") || "—";
+
+    const total = data.total || {};
+    const mesesNombres = [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ];
+
+    box.style.display = "block";
+    box.innerHTML = `
     <div class="resumen-plan">
       <div class="resumen-header">
         <h3>📋 Plan de Mantenimiento - ${mesesNombres[month - 1]} ${year}</h3>
@@ -2003,49 +2229,48 @@ function mostrarResumenPlan(data, month, year) {
       </div>
 
       <div class="resumen-footer">
-        <p><strong>Nota:</strong> Las tareas han sido distribuidas equitativamente entre los analistas del turno nocturno.</p>
+        <p><strong>Nota:</strong> Las tareas han sido distribuidas equitativamente entre los analistas de turno.</p>
         <button class="btn-primary" onclick="window.mostrarSeccion?.('tareas')">
           Ver Tareas Creadas
         </button>
       </div>
     </div>
   `;
+  }
 
-  // Scroll al resumen
-  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
+  // ==================== ESTADÍSTICAS ====================
 
-// ==================== ESTADÍSTICAS ====================
+  function actualizarEstadisticas() {
+    const stats = calcularEstadisticas(equiposData);
+    mostrarEstadisticas(stats);
+  }
 
-function actualizarEstadisticas() {
-  const stats = calcularEstadisticas(equiposData);
-  mostrarEstadisticas(stats);
-}
+  function calcularEstadisticas(equipos) {
+    const hoy = new Date();
+    let vencidos = 0;
+    let proximos = 0;
+    let alDia = 0;
 
-function calcularEstadisticas(equipos) {
-  const hoy = new Date();
-  let vencidos = 0;
-  let proximos = 0;
-  let alDia = 0;
+    equipos.forEach((e) => {
+      if (!e.proximoMantenimiento) return;
 
-  equipos.forEach(e => {
-    if (!e.proximoMantenimiento) return;
-    
-    const diff = Math.ceil((new Date(e.proximoMantenimiento) - hoy) / (1000 * 60 * 60 * 24));
-    
-    if (diff < 0) vencidos++;
-    else if (diff <= 30) proximos++;
-    else alDia++;
-  });
+      const diff = Math.ceil(
+        (new Date(e.proximoMantenimiento) - hoy) / (1000 * 60 * 60 * 24),
+      );
 
-  return { total: equipos.length, vencidos, proximos, alDia };
-}
+      if (diff < 0) vencidos++;
+      else if (diff <= 30) proximos++;
+      else alDia++;
+    });
 
-function mostrarEstadisticas(stats) {
-  const container = document.getElementById('stats-equipos');
-  if (!container) return;
+    return { total: equipos.length, vencidos, proximos, alDia };
+  }
 
-  container.innerHTML = `
+  function mostrarEstadisticas(stats) {
+    const container = document.getElementById("stats-equipos");
+    if (!container) return;
+
+    container.innerHTML = `
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-number">${stats.total}</div>
@@ -2065,47 +2290,125 @@ function mostrarEstadisticas(stats) {
       </div>
     </div>
   `;
-}
+  }
 
-// ==================== SISTEMA DE NOTIFICACIONES ====================
+  // ==================== SISTEMA DE NOTIFICACIONES ====================
 
-function mostrarNotificacion(mensaje, tipo = 'info') {
-  const notif = document.createElement('div');
-  notif.className = `notificacion notif-${tipo}`;
-  
-  const iconos = {
-    success: 'check_circle',
-    error: 'error',
-    warning: 'warning',
-    info: 'info'
-  };
+  function mostrarNotificacion(mensaje, tipo = "info") {
+    const notif = document.createElement("div");
+    notif.className = `notificacion notif-${tipo}`;
 
-  notif.innerHTML = `
-    <span class="material-icons">${iconos[tipo] || 'info'}</span>
+    const iconos = {
+      success: "check_circle",
+      error: "error",
+      warning: "warning",
+      info: "info",
+    };
+
+    notif.innerHTML = `
+    <span class="material-icons">${iconos[tipo] || "info"}</span>
     <span>${mensaje}</span>
   `;
 
-  document.body.appendChild(notif);
+    document.body.appendChild(notif);
 
-  setTimeout(() => notif.classList.add('show'), 10);
-  
-  setTimeout(() => {
-    notif.classList.remove('show');
-    setTimeout(() => notif.remove(), 300);
-  }, 4000);
-}
+    setTimeout(() => notif.classList.add("show"), 10);
 
-// ==================== EXPORTAR FUNCIONES ====================
-
-window.initMantenimiento = initMantenimiento;
-
-  /* --------------------------------------------------------------------------
-     17. Inicialización al abrir index.html
-  -------------------------------------------------------------------------- */
-  if (path.endsWith("index.html")) {
-    cargarAnalistas();
-    cargarTareas();
-    cargarUsuarios();
-    cargarEquipos();
+    setTimeout(() => {
+      notif.classList.remove("show");
+      setTimeout(() => notif.remove(), 300);
+    }, 4000);
   }
+
+  window.initMantenimiento = initMantenimiento;
+
+  // ==================== UBICACIONES ====================
+
+  function bindUbicacionesEquipo() {
+    const piso = document.getElementById("eq-piso");
+    const area = document.getElementById("eq-area");
+
+    if (!piso || piso.__bound) return;
+
+    piso.addEventListener("change", (e) => {
+      cargarAreas(e.target.value);
+    });
+
+    area.addEventListener("change", (e) => {
+      cargarSubareas(e.target.value);
+    });
+
+    piso.__bound = true;
+  }
+
+  async function cargarPisos() {
+    const selectPiso = document.getElementById("eq-piso");
+    if (!selectPiso) return;
+
+    selectPiso.innerHTML = '<option value="">Seleccione piso</option>';
+
+    const res = await secureFetch("/ubicaciones/pisos");
+    const pisos = await res.json();
+
+    pisos.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p._id;
+      opt.textContent = p.nombre;
+      selectPiso.appendChild(opt);
+    });
+  }
+
+  async function cargarAreas(pisoId) {
+    const selectArea = document.getElementById("eq-area");
+    const selectSub = document.getElementById("eq-subarea");
+
+    selectArea.innerHTML = '<option value="">Seleccione área</option>';
+    selectArea.disabled = true;
+
+    selectSub.innerHTML =
+      '<option value="">Seleccione subárea (opcional)</option>';
+    selectSub.disabled = true;
+
+    if (!pisoId) return;
+
+    const res = await secureFetch(`/ubicaciones/${pisoId}/hijos`);
+    const areas = await res.json();
+
+    areas.forEach((a) => {
+      const opt = document.createElement("option");
+      opt.value = a._id;
+      opt.textContent = a.nombre;
+      selectArea.appendChild(opt);
+    });
+
+    selectArea.disabled = false;
+  }
+
+  async function cargarSubareas(areaId) {
+    const selectSub = document.getElementById("eq-subarea");
+    selectSub.innerHTML =
+      '<option value="">Seleccione subárea (opcional)</option>';
+    selectSub.disabled = true;
+
+    if (!areaId) return;
+
+    const res = await secureFetch(`/ubicaciones/${areaId}/hijos`);
+    const subareas = await res.json();
+
+    if (subareas.length === 0) return;
+
+    subareas.forEach((s) => {
+      const opt = document.createElement("option");
+      opt.value = s._id;
+      opt.textContent = s.nombre;
+      selectSub.appendChild(opt);
+    });
+
+    selectSub.disabled = false;
+  }
+
+  mostrarSeccion("inicio");
+  cargarEquipos();
+  bindUbicacionesEquipo();
+  cargarPisos();
 });

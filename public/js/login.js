@@ -1,12 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(sessionStorage.getItem("user") || '{}');
-  if (user.id) window.location.href = 'index.html';
+
+  // 🔥 CORRECCIÓN CLAVE
+  if (user.id) {
+    window.location.href = "/";
+    return;
+  }
 
   const loginForm  = document.getElementById("loginForm");
   const loginError = document.getElementById("loginError");
 
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
 
@@ -16,11 +22,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      const res  = await fetch("/login", {
+      const res = await fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
       });
+
       const data = await res.json();
 
       if (res.ok) {
@@ -31,8 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
           sessionToken: data.user.sessionToken,
           loginTime: Date.now()
         };
+
         sessionStorage.setItem("user", JSON.stringify(userData));
-        window.location.href = "index.html";
+
+        window.location.href = "/";
       } else {
         loginError.textContent = data.error || "Credenciales incorrectas.";
       }
