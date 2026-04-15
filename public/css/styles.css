@@ -1,4 +1,3 @@
-
 /* =========================================================
    ÍNDICE
    1. Variables / Root
@@ -226,7 +225,9 @@ button {
   box-shadow: var(--shadow-sm);
   font-size: 0.95rem;
   color: var(--text-primary);
-  transition: background 0.2s, transform 0.2s;
+  transition:
+    background 0.2s,
+    transform 0.2s;
   text-align: left;
 }
 .sidebar-btn .material-icons {
@@ -338,30 +339,35 @@ button {
   object-fit: contain;
   display: block;
 }
-/* Panel con calendario y tareas */
+/* CONTENEDOR PRINCIPAL */
 .inicio-panel {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
 }
 
-/* Calendario más pequeño */
+/* =========================
+   CALENDARIO (60%)
+========================= */
 .calendario-widget {
-  flex: 1 1 55%;
-  min-width: 300px;
+  flex: 0 0 60%;
+  max-width: 60%;
+  min-width: 0;
 }
 
+/* Contenedor del calendario */
 #calendar {
   background: white;
   padding: 0.5rem;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  min-height: 280px; 
+
+  min-height: 280px;
   font-size: 0.85rem;
   overflow: hidden;
 }
 
+/* Eventos clickeables */
 #calendar .fc .fc-event,
 #calendar .fc a.fc-event,
 #calendar .fc .fc-daygrid-event,
@@ -370,9 +376,15 @@ button {
   cursor: pointer;
 }
 
-#calendar .fc .is-day-clickable { cursor: pointer; }
-#calendar .fc .is-day-clickable * { cursor: inherit; }
+/* Días clickeables */
+#calendar .fc .is-day-clickable {
+  cursor: pointer;
+}
+#calendar .fc .is-day-clickable * {
+  cursor: inherit;
+}
 
+/* Ajustes visuales compactos */
 .fc .fc-daygrid-day-frame {
   padding: 2px !important;
 }
@@ -386,59 +398,78 @@ button {
   font-size: 0.65rem;
 }
 
-
-/* Tarjeta más compacta */
+/* =========================
+   PENDIENTES (40%)
+========================= */
 .pendientes-card {
-  flex: 1 1 40%;
+  flex: 0 0 40%;
+  max-width: 40%;
+
   background: #f3f6f8;
-  border-left: 5px solid #2672ff;
-  padding: 0.75rem;
+  border-left: 4px solid #a85959;
+  padding: 0.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  max-height: 410px; 
-  overflow-y: auto;  
-}
 
-.pendientes-card h3 {
-  margin-top: 0;
-  font-size: 1.1rem;
-}
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 
-.pendientes-card ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.pendientes-card li {
-  padding: 0.4rem 0;
-  border-bottom: 1px solid #eee;
-  font-size: 0.85rem;
-}
-
-.pendientes-card h3 {
-  margin-top: 0;
-  font-size: 1.2rem;
-}
-.pendientes-card ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.pendientes-card li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #eee;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+
+  max-height: 450px;
 }
+
+/* Título */
+.pendientes-card h3 {
+  margin: 0 0 0.4rem 0;
+  font-size: 1rem;
+}
+
+/* Lista con scroll */
+.pendientes-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  overflow-y: auto;
+  flex: 1;
+
+  padding-right: 4px;
+}
+
+/* Items */
+.pendientes-card li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #424141;
+
+  font-size: 0.8rem;
+  line-height: 1.2;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .pendientes-card li:last-child {
   border-bottom: none;
 }
 
+/* Scroll bonito */
+.pendientes-card ul::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pendientes-card ul::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+.pendientes-card ul::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
 
 .apps-search {
   position: relative;
-  width: 180px; 
+  width: 180px;
   height: 36px;
 }
 
@@ -452,7 +483,9 @@ button {
   background-color: #fff;
   color: var(--text-primary);
   box-shadow: var(--shadow-sm);
-  transition: border 0.2s, box-shadow 0.2s;
+  transition:
+    border 0.2s,
+    box-shadow 0.2s;
 }
 
 .apps-search input:focus {
@@ -482,7 +515,9 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   cursor: pointer;
 }
 
@@ -499,30 +534,30 @@ button {
   border: 1px solid #ddd;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  padding: 1rem 1.25rem;        
-  margin-bottom: 1rem;      
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .apps-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;        
+  margin-bottom: 0.75rem;
 }
 
 .apps-card-header h2 {
-  font-size: 1.1rem;             
+  font-size: 1.1rem;
   color: var(--text-primary);
 }
 
 .apps-search {
   position: relative;
-  width: 200px;                     
+  width: 200px;
 }
 
 .apps-search input {
   width: 100%;
-  padding: 0.4rem 2.2rem 0.4rem 0.6rem; 
+  padding: 0.4rem 2.2rem 0.4rem 0.6rem;
   font-size: 0.85rem;
 }
 
@@ -534,7 +569,7 @@ button {
 .apps-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.75rem;                       
+  gap: 0.75rem;
 }
 
 /* Cada celda de app */
@@ -542,17 +577,19 @@ button {
   background: #f0f4f8;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  padding: 1rem;                       
-  min-height: 100px;                
+  padding: 1rem;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .app-cell img {
-  max-width: 60px;                 
+  max-width: 60px;
   max-height: 50px;
   margin-bottom: 0.75rem;
 }
@@ -644,8 +681,8 @@ button[type="submit"],
   font-weight: 500;
   line-height: 1;
 
-  background-color: #3b82f6; 
-  color: #ffffff; 
+  background-color: #3b82f6;
+  color: #ffffff;
 
   border: none;
   border-radius: 8px;
@@ -699,7 +736,7 @@ button[type="submit"]:active,
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 0.50rem;
+  margin-bottom: 0.5rem;
 }
 
 /* 1) Nombre de la tarea: ocupa doble espacio */
@@ -736,6 +773,7 @@ button[type="submit"]:active,
 }
 
 /* Botones en la misma línea */
+
 .filtros-botones {
   display: flex;
   gap: 0.5rem;
@@ -766,7 +804,9 @@ button[type="submit"]:active,
   border-radius: var(--radius);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 /* Hover general */
@@ -816,7 +856,8 @@ body {
 }
 
 /* Regla global para evitar scroll en el body */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -824,7 +865,9 @@ html, body {
   box-sizing: border-box;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: inherit;
 }
 
@@ -832,14 +875,13 @@ html, body {
 .main-content {
   width: 100%;
   max-width: 100vw;
-  height: calc(100vh - 40px); 
+  height: calc(100vh - 40px);
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px;
   background-color: #f9f9f9;
   box-sizing: border-box;
 }
-
 
 .apps-card {
   position: relative;
@@ -903,7 +945,7 @@ input[type="hidden"] {
 
 #notif-badge {
   position: absolute;
-  top: -4px; 
+  top: -4px;
   right: -4px;
   background: red;
   color: white;
@@ -1017,8 +1059,10 @@ input[type="hidden"] {
 /* Modal base */
 .modal {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -1102,9 +1146,8 @@ input[type="hidden"] {
   color: #d32f2f; /* rojo */
 }
 
-
 /* ====== Telegram field & button ====== */
-:root{
+:root {
   --tg-border: #d0d5dd;
   --tg-border-hover: #b6beca;
   --tg-border-focus: #5b9cff;
@@ -1121,13 +1164,13 @@ input[type="hidden"] {
 .tg-cell {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: 0.5rem;
   min-width: 260px;
 }
 
 /* Input del chatId */
-.tg-input{
-  width: 120px; 
+.tg-input {
+  width: 120px;
   padding: 8px 10px;
   border: 1px solid var(--tg-border);
   border-radius: 8px;
@@ -1136,25 +1179,28 @@ input[type="hidden"] {
   font-size: 14px;
   line-height: 1.2;
   outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
-.tg-input::placeholder{
+.tg-input::placeholder {
   color: var(--tg-text-muted);
 }
 
-.tg-input:hover{
+.tg-input:hover {
   border-color: var(--tg-border-hover);
 }
 
-.tg-input:focus{
+.tg-input:focus {
   border-color: var(--tg-border-focus);
   box-shadow: var(--tg-shadow-focus);
   background: var(--tg-bg-muted);
 }
 
 /* Botón Guardar */
-.tg-save{
+.tg-save {
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid transparent;
@@ -1163,42 +1209,46 @@ input[type="hidden"] {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background .15s ease, transform .03s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.03s ease;
   user-select: none;
 }
 
-.tg-save:hover{
+.tg-save:hover {
   background: var(--tg-primary-hover);
 }
 
-.tg-save:active{
+.tg-save:active {
   background: var(--tg-primary-active);
   transform: translateY(1px);
 }
 
 .tg-save:disabled,
-.tg-input:disabled{
-  opacity: .6;
+.tg-input:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 table .tg-input,
-table .tg-save{
+table .tg-save {
   margin: 2px 0;
 }
 
-@media (max-width: 640px){
-  .tg-cell{
+@media (max-width: 640px) {
+  .tg-cell {
     flex-direction: column;
     align-items: stretch;
-    gap: .4rem;
+    gap: 0.4rem;
     min-width: 0;
   }
-  .tg-input{ width: 100%; }
+  .tg-input {
+    width: 100%;
+  }
 }
 
 /* ====== Role Select (form-control role-select) ====== */
-:root{
+:root {
   --rs-border: var(--tg-border, #d0d5dd);
   --rs-border-hover: var(--tg-border-hover, #b6beca);
   --rs-border-focus: var(--tg-border-focus, #5b9cff);
@@ -1211,7 +1261,7 @@ table .tg-save{
 
 /* Modo oscuro (si ya usas prefers-color-scheme) */
 @media (prefers-color-scheme: dark) {
-  :root{
+  :root {
     --rs-border: var(--tg-border, #374151);
     --rs-border-hover: var(--tg-border-hover, #4b5563);
     --rs-border-focus: var(--tg-border-focus, #60a5fa);
@@ -1219,7 +1269,10 @@ table .tg-save{
     --rs-bg-muted: var(--tg-bg-muted, #0b1220);
     --rs-text: var(--tg-text, #e5e7eb);
     --rs-text-muted: var(--tg-text-muted, #9ca3af);
-    --rs-shadow-focus: var(--tg-shadow-focus, 0 0 0 3px rgba(59,130,246,.25));
+    --rs-shadow-focus: var(
+      --tg-shadow-focus,
+      0 0 0 3px rgba(59, 130, 246, 0.25)
+    );
   }
 }
 
@@ -1230,10 +1283,10 @@ table .tg-save{
 
 /* Select base */
 .form-control.role-select,
-.role-select.form-control{
-  width: 160px;                /* ajusta según tu tabla */
+.role-select.form-control {
+  width: 160px; /* ajusta según tu tabla */
   max-width: 100%;
-  padding: 8px 36px 8px 12px;  /* espacio para el ícono a la derecha */
+  padding: 8px 36px 8px 12px; /* espacio para el ícono a la derecha */
   border: 1px solid var(--rs-border);
   border-radius: 8px;
   background: var(--rs-bg);
@@ -1241,48 +1294,63 @@ table .tg-save{
   font-size: 14px;
   line-height: 1.2;
   outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
   /* Ocultar flecha nativa y usar nuestra flecha SVG */
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image:
-    url("data:image/svg+xml;utf8,<svg fill='none' stroke='%23677' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path d='M6 9l6 6 6-6'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg fill='none' stroke='%23677' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path d='M6 9l6 6 6-6'/></svg>");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px;
 }
 
-.form-control.role-select:hover{
+.form-control.role-select:hover {
   border-color: var(--rs-border-hover);
 }
 
-.form-control.role-select:focus{
+.form-control.role-select:focus {
   border-color: var(--rs-border-focus);
   box-shadow: var(--rs-shadow-focus);
   background: var(--rs-bg-muted);
 }
 
-.form-control.role-select:disabled{
-  opacity: .6;
+.form-control.role-select:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.form-control.role-select{ cursor: pointer; }
+.form-control.role-select {
+  cursor: pointer;
+}
 
+table .form-control.role-select {
+  margin: 2px 0;
+}
 
-table .form-control.role-select{ margin: 2px 0; }
-
-.role-select.sm{ width: 120px; padding: 6px 32px 6px 10px; font-size: 13px; }
-.role-select.lg{ width: 200px; padding: 10px 40px 10px 12px; font-size: 15px; }
+.role-select.sm {
+  width: 120px;
+  padding: 6px 32px 6px 10px;
+  font-size: 13px;
+}
+.role-select.lg {
+  width: 200px;
+  padding: 10px 40px 10px 12px;
+  font-size: 15px;
+}
 
 /* Contenedores: un solo scroll (el de la tabla) */
 .main-content,
 #tareas.section,
-#tareas{ overflow: hidden; }
+#tareas {
+  overflow: hidden;
+}
 
 #tareas.section,
-#tareas{
+#tareas {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 56px);
@@ -1291,22 +1359,22 @@ table .form-control.role-select{ margin: 2px 0; }
 
 .section > .back-btn {
   align-self: flex-start;
-  padding: 10px 18px; 
+  padding: 10px 18px;
   font-size: 14px;
-  margin-bottom: 16px; 
+  margin-bottom: 16px;
 }
 
 /* Tabla con scroll interno y espacio para la paginación sticky */
-#tareas .table-container{
+#tareas .table-container {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding: 8px 12px;
-  padding-bottom: 2px; 
+  padding-bottom: 2px;
   margin-bottom: 0;
 }
 
-#paginacionTareas.paginacion-tareas{
+#paginacionTareas.paginacion-tareas {
   position: sticky;
   bottom: 0;
   z-index: 2;
@@ -1324,43 +1392,54 @@ table .form-control.role-select{ margin: 2px 0; }
   /* layout de los botones */
   display: flex;
   align-items: center;
-  justify-content: center;   /* o space-between si prefieres */
+  justify-content: center; /* o space-between si prefieres */
   gap: 10px;
   height: auto;
 }
 
-#paginacionTareas button{
+#paginacionTareas button {
   padding: 8px 14px;
-  border-radius: 999px; 
+  border-radius: 999px;
   border: 1px solid var(--surface-300, #e0e0e0);
   background: var(--surface-card, #5b9cff);
   color: var(--text-primary, #111827);
   cursor: pointer;
-  transition: background .15s, border-color .15s, transform .02s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.02s;
 }
-#paginacionTareas button:hover:not(:disabled){
+#paginacionTareas button:hover:not(:disabled) {
   background: var(--surface-50, #f5f5f5);
   border-color: var(--surface-400, #cbd5e1);
 }
-#paginacionTareas button:active:not(:disabled){ transform: translateY(1px); }
-#paginacionTareas button:disabled{ opacity: .55; cursor: not-allowed; }
+#paginacionTareas button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+#paginacionTareas button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 /* Tabla estable con separador continuo por fila */
-#tareas table{
+#tareas table {
   width: 100%;
   table-layout: fixed;
-  border-collapse: collapse; 
+  border-collapse: collapse;
   border-spacing: 0;
 }
-#tareas thead th{
+#tareas thead th {
   background: var(--surface-card, #fff);
 }
-#tareas tbody tr{
-  border-bottom: 1px solid var(--surface-300, #e5e7eb); 
+#tareas tbody tr {
+  border-bottom: 1px solid var(--surface-300, #e5e7eb);
 }
-#tareas tbody tr:last-child{ border-bottom: none; }
+#tareas tbody tr:last-child {
+  border-bottom: none;
+}
 
-#tareas th, #tareas td{
+#tareas th,
+#tareas td {
   padding: 8px 10px;
   font-size: 14px;
   vertical-align: middle;
@@ -1368,64 +1447,105 @@ table .form-control.role-select{ margin: 2px 0; }
 }
 
 /* Distribución de columnas (más aire para Actividad y Acciones) */
-#tareas th:nth-child(1), #tareas td:nth-child(1){ width: 51%; } /* Actividad  */
-#tareas th:nth-child(2), #tareas td:nth-child(2){ width:  9%; } /* Analista   */
-#tareas th:nth-child(3), #tareas td:nth-child(3){ width: 11%; } /* Fecha/Hora */
-#tareas th:nth-child(4), #tareas td:nth-child(4){ width:  9%; } /* Estado     */
-#tareas th:nth-child(5), #tareas td:nth-child(5){ width: 21%; } /* Acciones   */
+#tareas th:nth-child(1),
+#tareas td:nth-child(1) {
+  width: 51%;
+} /* Actividad  */
+#tareas th:nth-child(2),
+#tareas td:nth-child(2) {
+  width: 9%;
+} /* Analista   */
+#tareas th:nth-child(3),
+#tareas td:nth-child(3) {
+  width: 11%;
+} /* Fecha/Hora */
+#tareas th:nth-child(4),
+#tareas td:nth-child(4) {
+  width: 9%;
+} /* Estado     */
+#tareas th:nth-child(5),
+#tareas td:nth-child(5) {
+  width: 21%;
+} /* Acciones   */
 
-#tareas td:not(:last-child){
+#tareas td:not(:last-child) {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-#tareas td:last-child{ white-space: normal; }
+#tareas td:last-child {
+  white-space: normal;
+}
 #tareas td:last-child .acciones-tareas,
-#tareas td:last-child .filtros-botones{
+#tareas td:last-child .filtros-botones {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
-#tareas td:last-child button{
+#tareas td:last-child button {
   padding: 6px 10px;
   font-size: 13px;
   line-height: 1.1;
   border-radius: 8px;
 }
 
-@media (max-height: 740px){
-  #tareas .table-container{ padding: 6px 10px; padding-bottom: 2px; }
-  #paginacionTareas.paginacion-tareas{ height: 48px; }
-  #tareas th, #tareas td{ padding: 6px 8px; font-size: 13.5px; }
+@media (max-height: 740px) {
+  #tareas .table-container {
+    padding: 6px 10px;
+    padding-bottom: 2px;
+  }
+  #paginacionTareas.paginacion-tareas {
+    height: 48px;
+  }
+  #tareas th,
+  #tareas td {
+    padding: 6px 8px;
+    font-size: 13.5px;
+  }
 }
 
-@media (max-width: 980px){
-  #tareas th:nth-child(1), #tareas td:nth-child(1){ width: 46%; }
-  #tareas th:nth-child(2), #tareas td:nth-child(2){ width: 12%; }
-  #tareas th:nth-child(3), #tareas td:nth-child(3){ width: 16%; }
-  #tareas th:nth-child(4), #tareas td:nth-child(4){ width:  8%; }
-  #tareas th:nth-child(5), #tareas td:nth-child(5){ width: 24%; }
+@media (max-width: 980px) {
+  #tareas th:nth-child(1),
+  #tareas td:nth-child(1) {
+    width: 46%;
+  }
+  #tareas th:nth-child(2),
+  #tareas td:nth-child(2) {
+    width: 12%;
+  }
+  #tareas th:nth-child(3),
+  #tareas td:nth-child(3) {
+    width: 16%;
+  }
+  #tareas th:nth-child(4),
+  #tareas td:nth-child(4) {
+    width: 8%;
+  }
+  #tareas th:nth-child(5),
+  #tareas td:nth-child(5) {
+    width: 24%;
+  }
 }
 
-:root{
-  --pager-h: 44px; 
-  --pager-offset: 43px; 
+:root {
+  --pager-h: 44px;
+  --pager-offset: 43px;
 }
 
-#tareas .table-container{
+#tareas .table-container {
   padding-bottom: calc(var(--pager-h) + var(--pager-offset) + 6px) !important;
 }
-#paginacionTareas.paginacion-tareas{
+#paginacionTareas.paginacion-tareas {
   position: sticky;
-  bottom: var(--pager-offset); 
-  padding: 6px 10px; 
+  bottom: var(--pager-offset);
+  padding: 6px 10px;
   margin: 4px 12px 0 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
-#paginacionTareas button{
+#paginacionTareas button {
   padding: 6px 12px;
   border-radius: 999px;
 }
@@ -1436,31 +1556,35 @@ table .form-control.role-select{ margin: 2px 0; }
   margin-bottom: 10px;
 }
 
-.main-content{ overflow: auto; }
+.main-content {
+  overflow: auto;
+}
 
 /* La lista de actividades no crea scroll interno */
-#tareas .table-container{
-  overflow: visible !important;   /* antes: auto */
-  padding-bottom: 16px !important;/* menos “colchón” abajo */
+#tareas .table-container {
+  overflow: visible !important; /* antes: auto */
+  padding-bottom: 16px !important; /* menos “colchón” abajo */
 }
 
 #detalle-tarea .table-container,
 #ver-detalles .table-container,
-#detalle .table-container{
-  overflow: auto !important;      /* aquí sí queremos scroll */
-  max-height: calc(100vh - 180px);/* ajusta según tu header/título/botón volver */
+#detalle .table-container {
+  overflow: auto !important; /* aquí sí queremos scroll */
+  max-height: calc(
+    100vh - 180px
+  ); /* ajusta según tu header/título/botón volver */
 }
 
 /* Si el historial está en un contenedor específico, dale scroll allí */
 #detalle-tarea .historial-container,
 #ver-detalles .historial-container,
-#detalle .historial-container{
+#detalle .historial-container {
   overflow: auto;
-  max-height: calc(100vh - 220px);/* ajusta si el historial es más largo */
+  max-height: calc(100vh - 220px); /* ajusta si el historial es más largo */
 }
 
 /* (Opcional) si abres detalles en modal: scroll dentro del modal */
-.modal .modal-body{
+.modal .modal-body {
   max-height: 70vh;
   overflow: auto;
 }
@@ -1538,7 +1662,7 @@ table .form-control.role-select{ margin: 2px 0; }
   background: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   text-align: center;
   border-left: 4px solid #3b82f6;
 }
@@ -1574,7 +1698,7 @@ table .form-control.role-select{ margin: 2px 0; }
   background: white;
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-top: 24px;
 }
 
@@ -1704,7 +1828,7 @@ table .form-control.role-select{ margin: 2px 0; }
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .filtros-equipos-grid {
@@ -1737,7 +1861,7 @@ table .form-control.role-select{ margin: 2px 0; }
   background: white;
   padding: 16px 20px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1823,15 +1947,15 @@ select.valid {
   .resumen-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .filtros-equipos-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .notificacion {
     right: 10px;
     left: 10px;
@@ -1933,7 +2057,9 @@ select.valid {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease;
 }
 
 .btn-cancelar:hover {
@@ -1953,7 +2079,9 @@ select.valid {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease;
 }
 
 .btn-actualizar:hover {
@@ -1963,7 +2091,6 @@ select.valid {
 .btn-actualizar:active {
   transform: scale(0.97);
 }
-
 
 /* =========================================================
    OVERRIDES UX/UI (SEGUROS)
@@ -2165,7 +2292,7 @@ html {
   .table-container table {
     min-width: 800px;
   }
-}/* =========================================================
+} /* =========================================================
    FIX – COLUMNAS ESTADO / ACCIONES (ACTIVIDADES)
 ========================================================= */
 
@@ -2180,7 +2307,7 @@ html {
 /* Columna ACCIONES */
 .table-container th:nth-child(5),
 .table-container td:nth-child(5) {
-  min-width: 260px;          /* 🔥 espacio para botones */
+  min-width: 260px; /* 🔥 espacio para botones */
   text-align: center;
 }
 
@@ -2190,7 +2317,7 @@ html {
   justify-content: center;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap;         /* 🔥 no permitir salto */
+  flex-wrap: nowrap; /* 🔥 no permitir salto */
 }
 
 /* Botones más compactos (sin perder legibilidad) */
@@ -2198,8 +2325,6 @@ html {
   padding: 6px 10px;
   font-size: 13px;
 }
-
-
 
 /* =========================================================
    REFACTOR FINAL – SISTEMA DE BOTONES UNIFICADO
@@ -2278,7 +2403,7 @@ button .material-icons {
 }
 
 .section h1 {
-  margin-top: 0;        
+  margin-top: 0;
   margin-bottom: 20px;
 }
 
@@ -2361,4 +2486,33 @@ button .material-icons {
   justify-content: center;
   gap: 15px;
   z-index: 10;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.admin-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.admin-card h3 {
+  margin-bottom: 15px;
+}
+
+.admin-card button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.admin-listado {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 10px;
 }

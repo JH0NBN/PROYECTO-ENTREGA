@@ -4,7 +4,7 @@ const equipoSchema = new mongoose.Schema(
   {
     marca: { type: String, required: true, trim: true },
     modelo: { type: String, required: true, trim: true },
-    serial: { type: String, required: true, unique: true, trim: true },
+    serial: { type: String, unique: true, sparse: true },
     placa: { type: String, trim: true },
 
     tipo: { type: String, trim: true },
@@ -40,12 +40,26 @@ const equipoSchema = new mongoose.Schema(
 );
 
 function calcularProximo(fechaCompra, ultimo) {
+  const compra = new Date(fechaCompra);
+
   if (ultimo) {
-    const d = new Date(ultimo);
-    d.setMonth(d.getMonth() + 6);
-    return d;
+    const ultimoDate = new Date(ultimo);
+
+    // 🟢 CASO 1: Primer mantenimiento (nuevo equipo)
+    if (ultimoDate.getTime() === compra.getTime()) {
+      const primer = new Date(compra);
+      primer.setFullYear(primer.getFullYear() + 1);
+      return primer;
+    }
+
+    // 🔵 CASO 2: Ya tuvo mantenimiento real → +6 meses
+    const siguiente = new Date(ultimoDate);
+    siguiente.setMonth(siguiente.getMonth() + 6);
+    return siguiente;
   }
-  const base = new Date(fechaCompra);
+
+  // Si por alguna razón no hay ultimo mantenimiento
+  const base = new Date(compra);
   base.setFullYear(base.getFullYear() + 1);
   return base;
 }

@@ -174,6 +174,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return res;
   }
 
+  //----- FECHAS
+
+  function formatearFecha(fecha) {
+    if (!fecha) return "";
+
+    const f = new Date(fecha);
+
+    return new Date(
+      f.getTime() + f.getTimezoneOffset() * 60000,
+    ).toLocaleDateString("es-CO");
+  }
+
   // ===== MOSTRAR SECCIÓN
   window.mostrarSeccion = async function (id) {
     __baseMostrarSeccion(id);
@@ -198,15 +210,36 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    function bindUbicacionesEquipos() {
+      const piso = document.getElementById("eq-piso");
+      const area = document.getElementById("eq-area");
+
+      if (!piso || !area) return;
+
+      piso.addEventListener("change", (e) => {
+        console.log("📍 Piso cambiado:", e.target.value);
+        cargarAreas(e.target.value);
+      });
+
+      area.addEventListener("change", (e) => {
+        console.log("🏢 Área cambiada:", e.target.value);
+        cargarSubareas(e.target.value);
+      });
+    }
+
     // EQUIPOS
-    if (id === "equipos") {
+    if (id === "inventario") {
       try {
         bindFormEquipo?.();
-        cargarPisos?.();
-        bindUbicacionesEquipos?.();
-        requestAnimationFrame(() => {
+
+        requestAnimationFrame(async () => {
+          await cargarPisos();
+          await cargarPisosFiltros();
+          bindUbicacionesEquipos?.();
           cargarEquipos?.();
         });
+
+        bindFiltrosEquipos?.();
       } catch (e) {
         console.error("Error equipos:", e);
       }
@@ -218,7 +251,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         if (!window.__calendarRef && calendarEl) {
-          const resp = await secureFetch("/tareas", { method: "GET" });
+          const currentUser = JSON.parse(
+            sessionStorage.getItem("user") || "{}",
+          );
+
+          const resp = await secureFetch(`/tareas?analista=${currentUser.id}`, {
+            method: "GET",
+          });
           const tareas = await resp.json();
           initCalendarioTareas(tareas);
         }
@@ -344,11 +383,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const businessDays = 3;
     const offset = businessDays - 1;
     const deadline = addBusinessDays(now, offset);
-    const isoDate = deadline.toISOString().slice(0, 10);
+    const isoDate = new Date(
+      deadline.getTime() - deadline.getTimezoneOffset() * 60000,
+    )
+      .toISOString()
+      .slice(0, 10);
 
     document.getElementById("fechaLimite").value = isoDate;
     document.getElementById("display-fechaLimite").value =
-      deadline.toLocaleDateString();
+      formatearFecha(deadline);
 
     const textarea = document.getElementById("descripcion");
     const contador = document.getElementById("contador-descripcion");
@@ -488,9 +531,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .slice(0, 10);
       flHidden.value = originalISO;
 
-      document.getElementById("display-reasignar-fechaLimite").value = new Date(
-        tarea.fechaLimite,
-      ).toLocaleDateString();
+      document.getElementById("display-reasignar-fechaLimite").value =
+        formatearFecha(tarea.fechaLimite);
 
       document.getElementById("formReasignar").dataset.id = id;
       mostrarSeccion("reasignar-tarea");
@@ -670,7 +712,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function mostrarTareasPaginadas() {
     tasksPerPage = calcularTasksPorPantalla();
-    
+
     const tb = document.getElementById("listaTareas");
     tb.innerHTML = "";
 
@@ -723,7 +765,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <td>${
         t.analista?.username || analistasMap[t.analista] || "Sin asignar"
       }</td>
-      <td>${new Date(t.fechaHora).toLocaleString()}</td>
+      <td>${formatearFecha(t.fechaHora)}</td>
       <td>${t.estado || "Pendiente"}</td>
       <td class="filtros-botones">${acciones.join("")}</td>
     `;
@@ -858,13 +900,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         tr.classList.add(clase);
       }
-      // Si no está pendiente, queda sin color
 
       // 3) Poblamos las celdas
       tr.innerHTML = `
         <td>${t.titulo}</td>
         <td>${analistasMap[t.analista] || t.analista}</td>
-        <td>${new Date(t.fechaHora).toLocaleString()}</td>
+        <td>${formatearFecha(t.fechaHora)}</td>
         <td>${t.estado || "Pendiente"}</td>
         <td class="filtros-botones">
           ${
@@ -1006,7 +1047,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const mapFields = [
         ["detalles-titulo", "titulo"],
         ["detalles-descripcion", "descripcion"],
-        ["detalles-fechaHora", () => new Date(t.fechaHora).toLocaleString()],
+        ["detalles-fechaHora", () => formatearFecha(t.fechaHora)],
         [
           "detalles-analista",
           () =>
@@ -1031,8 +1072,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>${c.accion}</td>
             <td>${analistasMap[c.analista_anterior] || c.analista_anterior}</td>
             <td>${analistasMap[c.analista_nuevo] || c.analista_nuevo}</td>
-            <td>${new Date(c.fecha).toLocaleString()}</td>
-            <td>${new Date(c.fechaLimite_nueva).toLocaleString()}</td>
+            <td>${formatearFecha(c.fecha)}</td>
+            <td>${formatearFecha(c.fechaLimite_nueva)}</td>
             <td>${c.observacion}</td>`;
           histTbody.appendChild(tr);
         });
@@ -1403,7 +1444,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: "dayGridMonth",
       locale: "es",
-      height: "auto",
+      height: 450,
+      contentHeight: 450,
+      dayMaxEventRows: true,
+      moreLinkClick: "popover",
       headerToolbar: {
         left: "prev,next today",
         center: "title",
@@ -1449,8 +1493,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const pendientes = tareas
       .filter((t) => t.estado === "Pendiente")
-      .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora))
-      .slice(0, 10);
+      .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
 
     contenedor.innerHTML = "";
 
@@ -1460,23 +1503,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     pendientes.forEach((t) => {
-      const fecha = new Date(t.fechaHora).toLocaleDateString("es-CO", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-
+      const fecha = formatearFecha(t.fechaHora);
       const responsable = t.analista?.username || "Sin asignar";
 
       const li = document.createElement("li");
       li.style.cursor = "pointer";
       li.title = "Ver detalle";
+
       li.innerHTML = `
       <strong>${responsable}</strong><br/>
       <span>${t.titulo}</span><br/>
       <small>${fecha}</small>
     `;
+
       li.addEventListener("click", () => verDetallesTarea(t._id));
+
       contenedor.appendChild(li);
     });
   }
@@ -1982,35 +2023,61 @@ document.addEventListener("DOMContentLoaded", () => {
     const filtroNombre = document.getElementById("filtro-equipo-nombre");
     const filtroSerial = document.getElementById("filtro-equipo-serial");
     const filtroEstado = document.getElementById("filtro-equipo-estado");
+    const filtroPiso = document.getElementById("eq-piso");
+    const filtroArea = document.getElementById("eq-area");
+    const filtroSubarea = document.getElementById("eq-subarea");
 
     if (filtroNombre)
       filtroNombre.addEventListener("input", aplicarFiltrosEquipos);
+
     if (filtroSerial)
       filtroSerial.addEventListener("input", aplicarFiltrosEquipos);
+
     if (filtroEstado)
       filtroEstado.addEventListener("change", aplicarFiltrosEquipos);
+
+    if (filtroPiso)
+      filtroPiso.addEventListener("change", aplicarFiltrosEquipos);
+
+    if (filtroArea)
+      filtroArea.addEventListener("change", aplicarFiltrosEquipos);
+
+    if (filtroSubarea)
+      filtroSubarea.addEventListener("change", aplicarFiltrosEquipos);
   }
 
   function aplicarFiltrosEquipos() {
     const nombre =
       document.getElementById("filtro-equipo-nombre")?.value.toLowerCase() ||
       "";
+
     const serial =
       document.getElementById("filtro-equipo-serial")?.value.toLowerCase() ||
       "";
+
     const estado = document.getElementById("filtro-equipo-estado")?.value || "";
 
+    const piso = document.getElementById("eq-piso")?.value || "";
+
+    const area = document.getElementById("eq-area")?.value || "";
+
+    const subarea = document.getElementById("eq-subarea")?.value || "";
+
     const filtrados = equiposData.filter((e) => {
-      const matchNombre = !nombre || e.nombre.toLowerCase().includes(nombre);
-      const matchSerial =
-        !serial || (e.serial && e.serial.toLowerCase().includes(serial));
+      const matchNombre =
+        !nombre || (e.dominio && e.dominio.toLowerCase().includes(nombre));
+
+      const matchSerial = !serial || e.serial?.toLowerCase().includes(serial);
 
       let matchEstado = true;
+
       if (estado === "vencido") {
         matchEstado =
           e.proximoMantenimiento &&
           new Date(e.proximoMantenimiento) < new Date();
-      } else if (estado === "proximo") {
+      }
+
+      if (estado === "proximo") {
         const diff = Math.ceil(
           (new Date(e.proximoMantenimiento) - new Date()) /
             (1000 * 60 * 60 * 24),
@@ -2018,7 +2085,20 @@ document.addEventListener("DOMContentLoaded", () => {
         matchEstado = diff >= 0 && diff <= 30;
       }
 
-      return matchNombre && matchSerial && matchEstado;
+      const matchPiso = !piso || e.piso === piso;
+
+      const matchArea = !area || e.area === area;
+
+      const matchSubarea = !subarea || e.subarea === subarea;
+
+      return (
+        matchNombre &&
+        matchSerial &&
+        matchEstado &&
+        matchPiso &&
+        matchArea &&
+        matchSubarea
+      );
     });
 
     renderEquipos(filtrados);
@@ -2341,6 +2421,7 @@ document.addEventListener("DOMContentLoaded", () => {
     piso.__bound = true;
   }
 
+  //--PISOS FORMULARIO EQUIPO
   async function cargarPisos() {
     const selectPiso = document.getElementById("eq-piso");
     if (!selectPiso) return;
@@ -2407,8 +2488,83 @@ document.addEventListener("DOMContentLoaded", () => {
     selectSub.disabled = false;
   }
 
+  //--PISOS FILTRO EQUIPO
+  async function cargarPisosFiltros() {
+    const selectPiso = document.getElementById("filtro-piso");
+    if (!selectPiso) return;
+
+    selectPiso.innerHTML = '<option value="">Seleccione piso</option>';
+
+    const res = await secureFetch("/ubicaciones/pisos");
+    const pisos = await res.json();
+
+    pisos.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p._id;
+      opt.textContent = p.nombre;
+      selectPiso.appendChild(opt);
+    });
+  }
+
+  async function cargarAreasFiltros(pisoId) {
+    const selectArea = document.getElementById("filtro-area");
+    const selectSub = document.getElementById("filtro-subarea");
+
+    selectArea.innerHTML = '<option value="">Seleccione área</option>';
+    selectArea.disabled = true;
+
+    selectSub.innerHTML =
+      '<option value="">Seleccione subárea (opcional)</option>';
+    selectSub.disabled = true;
+
+    if (!pisoId) return;
+
+    const res = await secureFetch(`/ubicaciones/${pisoId}/hijos`);
+    const areas = await res.json();
+
+    areas.forEach((a) => {
+      const opt = document.createElement("option");
+      opt.value = a._id;
+      opt.textContent = a.nombre;
+      selectArea.appendChild(opt);
+    });
+
+    selectArea.disabled = false;
+  }
+
+  async function cargarSubareasFiltros(areaId) {
+    const selectSub = document.getElementById("filtro-subarea");
+    selectSub.innerHTML =
+      '<option value="">Seleccione subárea (opcional)</option>';
+    selectSub.disabled = true;
+
+    if (!areaId) return;
+
+    const res = await secureFetch(`/ubicaciones/${areaId}/hijos`);
+    const subareas = await res.json();
+
+    if (subareas.length === 0) return;
+
+    subareas.forEach((s) => {
+      const opt = document.createElement("option");
+      opt.value = s._id;
+      opt.textContent = s.nombre;
+      selectSub.appendChild(opt);
+    });
+
+    selectSub.disabled = false;
+  }
+
   mostrarSeccion("inicio");
   cargarEquipos();
   bindUbicacionesEquipo();
   cargarPisos();
+  cargarAreas();
+  cargarSubareas();
+  cargarPisosFiltros();
+  cargarAreasFiltros();
+  cargarSubareasFiltros();
+  bindFiltrosEquipos();
+  calcularEstadisticas();
+  initMantenimiento();
 });

@@ -1,42 +1,51 @@
-const express  = require('express');
-const cors     = require('cors');
-const bcrypt   = require('bcrypt');
-const mongoose = require('mongoose');
+const express = require("express");
+const cors = require("cors");
+const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
 const { Types } = mongoose;
-const path     = require('path');
-const ExcelJS  = require('exceljs');
-const fs       = require('fs');
-const https    = require('https');
-const sanitizeHtml = require('sanitize-html');
-const mongoSanitize = require('express-mongo-sanitize')
-const Usuario = require('./models/Usuario');
-const Tarea   = require('./models/Tarea');
-const Equipo = require('./models/Equipo');
+const path = require("path");
+const ExcelJS = require("exceljs");
+const fs = require("fs");
+const https = require("https");
+const sanitizeHtml = require("sanitize-html");
+const mongoSanitize = require("express-mongo-sanitize");
+const Usuario = require("./models/Usuario");
+const Tarea = require("./models/Tarea");
+const Equipo = require("./models/Equipo");
 const Ubicacion = require("./models/Ubicacion");
-const { REFUSED } = require('dns');
-const Auditoria = require('./models/Auditoria');
-const { sendMessage,msgProxima, msgVencida, msgNuevaAsignacion, msgReasignacion, msgAmpliacion } = require('./helpers/telegram');
-const cron = require('node-cron');
-const { getStatusClass } = require('./helpers/status');
-const { resolve } = require('path/win32');
-const app  = express();
+const { REFUSED } = require("dns");
+const Auditoria = require("./models/Auditoria");
+const {
+  sendMessage,
+  msgProxima,
+  msgVencida,
+  msgNuevaAsignacion,
+  msgReasignacion,
+  msgAmpliacion,
+  msgFinalizada,
+} = require("./helpers/telegram");
+const cron = require("node-cron");
+const { getStatusClass } = require("./helpers/status");
+const { resolve } = require("path/win32");
+const app = express();
 const port = 3000;
 
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 const options = {
-  key: fs.readFileSync('./localhost-key.pem'),
-  cert: fs.readFileSync('./localhost.pem')
+  key: fs.readFileSync("./localhost-key.pem"),
+  cert: fs.readFileSync("./localhost.pem"),
 };
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 1) Conexión a MongoDB
 // ───────────────────────────────────────────────────────────────────────────────
-mongoose.connect('mongodb://localhost:27017/entregas_turnos')
-  .then(() => console.log('✅ Conectado a MongoDB'))
-  .catch(err => {
-    console.error('❌ Error conectando a MongoDB:', err);
+mongoose
+  .connect("mongodb://localhost:27017/entregas_turnos")
+  .then(() => console.log("✅ Conectado a MongoDB"))
+  .catch((err) => {
+    console.error("❌ Error conectando a MongoDB:", err);
     process.exit(1);
-  })
+  });
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 2) Middlewares
@@ -61,42 +70,45 @@ app.get("/registro", (req, res) => {
 app.use(mongoSanitize());
 
 app.use(async (req, res, next) => {
-
   const publicRoutes = [
-    '/',
-    '/login',
-    '/registro',
-    '/favicon.ico',
-    '/index.html',
-    '/login.html',
-    '/registro.html'
+    "/",
+    "/login",
+    "/registro",
+    "/favicon.ico",
+    "/index.html",
+    "/login.html",
+    "/registro.html",
   ];
 
   if (
-    req.path.startsWith('/css/') ||
-    req.path.startsWith('/js/') ||
-    req.path.startsWith('/images/') ||
-    req.path.endsWith('.css') ||
-    req.path.endsWith('.js') ||
-    req.path.endsWith('.png') ||
-    req.path.endsWith('.jpg') ||
-    req.path.endsWith('.ico') ||
+    req.path.startsWith("/css/") ||
+    req.path.startsWith("/js/") ||
+    req.path.startsWith("/images/") ||
+    req.path.endsWith(".css") ||
+    req.path.endsWith(".js") ||
+    req.path.endsWith(".png") ||
+    req.path.endsWith(".jpg") ||
+    req.path.endsWith(".ico") ||
     publicRoutes.includes(req.path)
   ) {
     return next();
   }
-  
-  const userId = req.header('x-user-id');
-  const sessionToken = req.header('x-session-token');
+
+  const userId = req.header("x-user-id");
+  const sessionToken = req.header("x-session-token");
 
   if (!userId || !sessionToken) {
-    return res.status(401).json({ error: "No autorizado: Falta token o usuario" });
+    return res
+      .status(401)
+      .json({ error: "No autorizado: Falta token o usuario" });
   }
 
   try {
     const user = await Usuario.findById(userId);
     if (!user || user.sessionToken !== sessionToken) {
-      return res.status(401).json({ error: "Sesión inválida o ya iniciada en otro dispositivo" });
+      return res
+        .status(401)
+        .json({ error: "Sesión inválida o ya iniciada en otro dispositivo" });
     }
 
     req.user = user;
@@ -107,54 +119,94 @@ app.use(async (req, res, next) => {
   }
 });
 
+// - Jefe
+
+async function enviarAJefes(texto) {
+  try {
+    const jefes = await Usuario.find({
+      rol: "jefe",
+      telegramChatId: { $ne: null },
+    }).lean();
+
+    for (const jefe of jefes) {
+      await sendMessage(jefe.telegramChatId, texto);
+    }
+  } catch (err) {
+    console.error("❌ Error enviando mensaje a jefes:", err);
+  }
+}
+
 // - Limpiar datos
 function sanitizeInput(input) {
   return sanitizeHtml(input, {
     allowedTags: [],
-    allowedAttributes: {}
-  })
+    allowedAttributes: {},
+  });
 }
 
 // - JOB
-cron.schedule('*/10 * * * *', async () => {
+cron.schedule("*/10 * * * *", async () => {
   const now = new Date();
   try {
-    const pendientes = await Tarea.find({ estado: 'Pendiente', fechaLimite: { $ne: null } }).lean();
-    const jefes = await Usuario.find({ rol: 'jefe', telegramChatId: { $ne: null } }, { telegramChatId: 1 }).lean();
-    const jefesChats = jefes.map(j => j.telegramChatId);
+    const pendientes = await Tarea.find({
+      estado: "Pendiente",
+      fechaLimite: { $ne: null },
+    })
+      .populate("analista", "username")
+      .lean();
+    const jefes = await Usuario.find(
+      { rol: "jefe", telegramChatId: { $ne: null } },
+      { telegramChatId: 1 },
+    ).lean();
+    const jefesChats = jefes.map((j) => j.telegramChatId);
 
     for (const t of pendientes) {
+      t.analistaNombre = t.analista?.username || "Sin asignar";
       const color = getStatusClass(t, now);
 
-      if (color === 'status-yellow' && !t.proximaNotificada) {
+      if (color === "status-yellow" && !t.proximaNotificada) {
         try {
-          const analista = await Usuario.findById(t.analista, { telegramChatId: 1 }).lean();
-          if (analista?.telegramChatId) await sendMessage(analista.telegramChatId, msgProxima(t, now));
-          for (const chat of jefesChats) await sendMessage(chat, msgProxima(t, now));
-          await Tarea.updateOne({ _id: t._id }, { $set: { proximaNotificada: true } });
+          const analista = await Usuario.findById(t.analista, {
+            telegramChatId: 1,
+          }).lean();
+          if (analista?.telegramChatId)
+            await sendMessage(analista.telegramChatId, msgProxima(t, now));
+          for (const chat of jefesChats)
+            await sendMessage(chat, msgProxima(t, now));
+          await Tarea.updateOne(
+            { _id: t._id },
+            { $set: { proximaNotificada: true } },
+          );
         } catch (e) {
-          console.warn('⚠️ Aviso proxima falló:', e.message);
+          console.warn("⚠️ Aviso proxima falló:", e.message);
         }
       }
 
-      if (color === 'status-red' && !t.vencidaNotificada) {
+      if (color === "status-red" && !t.vencidaNotificada) {
         try {
-          const analista = await Usuario.findById(t.analista, { telegramChatId: 1 }).lean();
-          if (analista?.telegramChatId) await sendMessage(analista.telegramChatId, msgVencida(t, now));
-          for (const chat of jefesChats) await sendMessage(chat, msgVencida(t, now));
-          await Tarea.updateOne({ _id: t._id }, { $set: { vencidaNotificada: true } });
+          const analista = await Usuario.findById(t.analista, {
+            telegramChatId: 1,
+          }).lean();
+          if (analista?.telegramChatId)
+            await sendMessage(analista.telegramChatId, msgVencida(t, now));
+          for (const chat of jefesChats)
+            await sendMessage(chat, msgVencida(t, now));
+          await Tarea.updateOne(
+            { _id: t._id },
+            { $set: { vencidaNotificada: true } },
+          );
         } catch (e) {
-          console.warn('⚠️ Aviso vencida falló:', e.message);
+          console.warn("⚠️ Aviso vencida falló:", e.message);
         }
       }
     }
   } catch (err) {
-    console.error('❌ Cron avisos error:', err);
+    console.error("❌ Cron avisos error:", err);
   }
 });
 
 // — Registro
-app.post('/registro', async (req, res) => {
+app.post("/registro", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: "Todos los campos son obligatorios" });
@@ -162,29 +214,38 @@ app.post('/registro', async (req, res) => {
   const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
   if (!regex.test(password)) {
     return res.status(400).json({
-      error: "La contraseña debe tener ≥8 caracteres, incluir letra, número y carácter especial."
+      error:
+        "La contraseña debe tener ≥8 caracteres, incluir letra, número y carácter especial.",
     });
   }
   try {
     if (await Usuario.findOne({ username })) {
-      return res.status(400).json({ error: "El nombre de usuario ya está en uso" });
+      return res
+        .status(400)
+        .json({ error: "El nombre de usuario ya está en uso" });
     }
     const hash = await bcrypt.hash(password, 10);
-    const nuevo = new Usuario({ username, password: hash, rol: 'analista' });
+    const nuevo = new Usuario({ username, password: hash, rol: "analista" });
     await nuevo.save();
 
-    const xff = (req.headers['x-forwarded-for'] || '').toString();
-    const ip = xff.split(',')[0].trim() || req.ip || req.connection?.remoteAddress || 'desconocida';
+    const xff = (req.headers["x-forwarded-for"] || "").toString();
+    const ip =
+      xff.split(",")[0].trim() ||
+      req.ip ||
+      req.connection?.remoteAddress ||
+      "desconocida";
     const ruta = req.originalUrl;
     await Auditoria.create({
       usuario: nuevo._id,
-      accion: 'Registro de usuario',
+      accion: "Registro de usuario",
       descripcion: `Nuevo registro de usuario: ${username}`,
       ip,
-      ruta
+      ruta,
     });
 
-    return res.status(201).json({ message: "Usuario registrado correctamente" });
+    return res
+      .status(201)
+      .json({ message: "Usuario registrado correctamente" });
   } catch (err) {
     console.error("❌ Error en POST /registro:", err);
     return res.status(500).json({ error: "Error en el servidor" });
@@ -192,8 +253,8 @@ app.post('/registro', async (req, res) => {
 });
 
 // — Login
-app.post('/login', async (req, res) => {
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+app.post("/login", async (req, res) => {
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
   const ruta = req.originalUrl;
   const { username, password } = req.body;
   if (!username || !password) {
@@ -206,29 +267,31 @@ app.post('/login', async (req, res) => {
       // Auditoría: usuario no encontrado
       await Auditoria.create({
         usuario: null,
-        accion: 'Login fallido',
+        accion: "Login fallido",
         descripcion: `Intento de login con usuario inexistente: ${username}`,
         ip,
-        ruta
+        ruta,
       });
-      return res.status(400).json({ error: "Usuario o contraseña incorrectos" });
+      return res
+        .status(400)
+        .json({ error: "Usuario o contraseña incorrectos" });
     }
 
     // Verificar si la cuenta está bloqueada
     if (user.lockUntil && user.lockUntil > Date.now()) {
       const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
-      
+
       // Auditoría: intento con cuenta bloqueada
       await Auditoria.create({
         usuario: user._id,
-        accion: 'Intento con cuenta bloqueada',
+        accion: "Intento con cuenta bloqueada",
         descripcion: `Login bloqueado para usuario: ${username}`,
         ip,
-        ruta
+        ruta,
       });
 
       return res.status(403).json({
-        error: `Cuenta bloqueada. Intenta de nuevo en ${minutesLeft} min.`
+        error: `Cuenta bloqueada. Intenta de nuevo en ${minutesLeft} min.`,
       });
     }
 
@@ -244,28 +307,28 @@ app.post('/login', async (req, res) => {
       // Auditoría: intento fallido
       await Auditoria.create({
         usuario: user._id,
-        accion: 'Login fallido',
+        accion: "Login fallido",
         descripcion: `Contraseña incorrecta para usuario: ${username}`,
         ip,
-        ruta
+        ruta,
       });
 
       return res.status(400).json({
-        error: "Usuario o contraseña incorrectos"
+        error: "Usuario o contraseña incorrectos",
       });
     }
     user.loginAttempts = 0;
     user.lockUntil = null;
-    const crypto = require('crypto');
-    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const crypto = require("crypto");
+    const sessionToken = crypto.randomBytes(32).toString("hex");
     user.sessionToken = sessionToken;
     await user.save();
     await Auditoria.create({
       usuario: user._id,
-      accion: 'Login exitoso',
+      accion: "Login exitoso",
       descripcion: `Usuario ${username} inició sesión correctamente.`,
       ip,
-      ruta
+      ruta,
     });
 
     return res.json({
@@ -274,8 +337,8 @@ app.post('/login', async (req, res) => {
         id: user._id,
         username: user.username,
         rol: user.rol,
-        sessionToken
-      }
+        sessionToken,
+      },
     });
   } catch (err) {
     console.error("❌ Error en POST /login:", err);
@@ -284,27 +347,27 @@ app.post('/login', async (req, res) => {
 });
 
 // - logout
-app.post('/logout', async (req, res) => {
-  const userId = req.header('x-user-id');
+app.post("/logout", async (req, res) => {
+  const userId = req.header("x-user-id");
 
   if (!userId) {
     return res.status(400).json({ error: "Usuario no identificado" });
   }
 
-  try{
+  try {
     await Usuario.findByIdAndUpdate(userId, { sessionToken: null });
-    return res.json({ message: "Sesion cerrada exitosamente"});
+    return res.json({ message: "Sesion cerrada exitosamente" });
   } catch (err) {
     console.error("❌ Error en POST /logout:", err);
-    return res.status(500).json({ error: "Error cerrando sesion"});
+    return res.status(500).json({ error: "Error cerrando sesion" });
   }
 });
 
 // — Listar usuarios
-app.get('/usuarios', async (req, res) => {
+app.get("/usuarios", async (req, res) => {
   try {
     const raw = await Usuario.find().lean();
-    const uniqueMap = new Map(raw.map(u => [u._id.toString(), u]));
+    const uniqueMap = new Map(raw.map((u) => [u._id.toString(), u]));
     const usuarios = Array.from(uniqueMap.values());
     return res.json(usuarios);
   } catch (err) {
@@ -314,19 +377,19 @@ app.get('/usuarios', async (req, res) => {
 });
 
 // — Editar rol de usuario
-app.put('/usuarios/:id', async (req, res) => {
+app.put("/usuarios/:id", async (req, res) => {
   const { id } = req.params;
   const { rol } = req.body;
-  if (!['analista','jefe','admin'].includes(rol)) {
-    return res.status(400).json({ error: 'Rol inválido' });
+  if (!["analista", "jefe", "admin"].includes(rol)) {
+    return res.status(400).json({ error: "Rol inválido" });
   }
   try {
     const user = await Usuario.findByIdAndUpdate(id, { rol }, { new: true });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-    return res.json({ message: 'Rol actualizado', user });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    return res.json({ message: "Rol actualizado", user });
   } catch (err) {
-    console.error('❌ Error en PUT /usuarios/:id:', err);
-    return res.status(500).json({ error: 'Error al actualizar usuario' });
+    console.error("❌ Error en PUT /usuarios/:id:", err);
+    return res.status(500).json({ error: "Error al actualizar usuario" });
   }
 });
 
@@ -359,10 +422,14 @@ app.put("/usuarios/:id/reset-password", async (req, res) => {
 });
 
 // — Activar / Inactivar usuario
-app.put('/usuarios/:id/:action(activar|inactivar)', async (req, res) => {
+app.put("/usuarios/:id/:action(activar|inactivar)", async (req, res) => {
   const { id, action } = req.params;
   try {
-    const u = await Usuario.findByIdAndUpdate(id, { isActive: action === 'activar' }, { new: true });
+    const u = await Usuario.findByIdAndUpdate(
+      id,
+      { isActive: action === "activar" },
+      { new: true },
+    );
     if (!u) return res.status(404).json({ error: "Usuario no encontrado" });
     return res.json({ message: `Usuario ${action}do`, user: u });
   } catch (err) {
@@ -372,9 +439,9 @@ app.put('/usuarios/:id/:action(activar|inactivar)', async (req, res) => {
 });
 
 // — Obtener analistas
-app.get('/analistas', async (req, res) => {
+app.get("/analistas", async (req, res) => {
   try {
-    const analistas = await Usuario.find({ rol: 'analista' }, 'username');
+    const analistas = await Usuario.find({ rol: "analista" }, "username");
     return res.json(analistas);
   } catch (err) {
     console.error("❌ Error en GET /analistas:", err);
@@ -383,126 +450,164 @@ app.get('/analistas', async (req, res) => {
 });
 
 // - Actualizar chatt de Telegram del usuario
-app.put('/usuarios/:id/telegram', async (req, res) => {
+app.put("/usuarios/:id/telegram", async (req, res) => {
   try {
     const { id } = req.params;
     const { telegramChatId, telegramUsername } = req.body || {};
 
     const isSelf = String(req.user._id) === String(id);
-    if (!isSelf && !['admin', 'jefe'].includes(req.user.rol)) {
-      return res.status(403).json({ error: 'No autorizado' }); 
+    if (!isSelf && !["admin", "jefe"].includes(req.user.rol)) {
+      return res.status(403).json({ error: "No autorizado" });
     }
 
     const update = {};
-    if (telegramChatId !== undefined) update.telegramChatId = telegramChatId?.trim() || null;
-    if (telegramUsername !== undefined) update.telegramUsername = telegramUsername?.trim() || null;
+    if (telegramChatId !== undefined)
+      update.telegramChatId = telegramChatId?.trim() || null;
+    if (telegramUsername !== undefined)
+      update.telegramUsername = telegramUsername?.trim() || null;
 
     const user = await Usuario.findByIdAndUpdate(id, update, { new: true });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    return res.json({ message: 'Telegram actualizado', user: {
-      id: user._id, username: user.username, telegramChatId: user.telegramChatId, telegramUsername: user.telegramUsername
-    }});
+    return res.json({
+      message: "Telegram actualizado",
+      user: {
+        id: user._id,
+        username: user.username,
+        telegramChatId: user.telegramChatId,
+        telegramUsername: user.telegramUsername,
+      },
+    });
   } catch (err) {
-    console.error('❌ Error en PUT /usuarios/:id/telegram:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en PUT /usuarios/:id/telegram:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
 // — Generar Informe (Excel)
-app.get('/tareas/informe', async (req, res) => {
+app.get("/tareas/informe", async (req, res) => {
   const { fechaInicio, fechaFin, analista, estado } = req.query;
   const filtro = {};
   if (analista) filtro.analista = analista;
-  if (estado)   filtro.estado   = estado;
+  if (estado) filtro.estado = estado;
   if (fechaInicio || fechaFin) {
     filtro.fechaHora = {};
     if (fechaInicio) filtro.fechaHora.$gte = new Date(fechaInicio);
-    if (fechaFin)    filtro.fechaHora.$lte = new Date(fechaFin + 'T23:59:59');
+    if (fechaFin) filtro.fechaHora.$lte = new Date(fechaFin + "T23:59:59");
   }
   try {
-    const tareas = await Tarea.find(filtro).populate('analista','username').lean();
+    const tareas = await Tarea.find(filtro)
+      .populate("analista", "username")
+      .lean();
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Tareas');
+    const ws = wb.addWorksheet("Tareas");
     ws.columns = [
-      { header: 'Título',      key: 'titulo' },
-      { header: 'Descripción', key: 'descripcion' },
-      { header: 'Analista',    key: 'analista' },
-      { header: 'FechaHora',   key: 'fechaHora' },
-      { header: 'FechaLímite', key: 'fechaLimite' },
-      { header: 'Ticket',      key: 'ticket' },
-      { header: 'Placa',       key: 'placa' },
-      { header: 'Estado',      key: 'estado' }
+      { header: "Título", key: "titulo" },
+      { header: "Descripción", key: "descripcion" },
+      { header: "Analista", key: "analista" },
+      { header: "FechaHora", key: "fechaHora" },
+      { header: "FechaLímite", key: "fechaLimite" },
+      { header: "Ticket", key: "ticket" },
+      { header: "Placa", key: "placa" },
+      { header: "Estado", key: "estado" },
     ];
-    tareas.forEach(t => ws.addRow({
-      titulo: t.titulo,
-      descripcion: t.descripcion,
-      analista: t.analista.username,
-      fechaHora: new Date(t.fechaHora).toLocaleString(),
-      fechaLimite: t.fechaLimite.toISOString().slice(0,10),
-      ticket: t.ticket,
-      placa: t.placa,
-      estado: t.estado || 'Pendiente'
-    }));
-    ws.columns.forEach(col => {
+    tareas.forEach((t) =>
+      ws.addRow({
+        titulo: t.titulo,
+        descripcion: t.descripcion,
+        analista: t.analista.username,
+        fechaHora: new Date(t.fechaHora).toLocaleString(),
+        fechaLimite: t.fechaLimite.toISOString().slice(0, 10),
+        ticket: t.ticket,
+        placa: t.placa,
+        estado: t.estado || "Pendiente",
+      }),
+    );
+    ws.columns.forEach((col) => {
       let max = col.header.length;
-      col.eachCell({ includeEmpty: true }, cell => {
-        const v = (cell.value || '').toString();
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        const v = (cell.value || "").toString();
         if (v.length > max) max = v.length;
       });
       col.width = max + 2;
     });
-    res.setHeader('Content-Disposition', `attachment; filename="Informe_Tareas_${fechaInicio||'desde'}_${fechaFin||'hasta'}.xlsx"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="Informe_Tareas_${fechaInicio || "desde"}_${fechaFin || "hasta"}.xlsx"`,
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error('❌ Error en GET /tareas/informe:', err);
-    res.status(500).json({ error: 'Error generando informe' });
+    console.error("❌ Error en GET /tareas/informe:", err);
+    res.status(500).json({ error: "Error generando informe" });
   }
 });
 
 // — Notificaciones
-app.get('/notificaciones', async (req, res) => {
+app.get("/notificaciones", async (req, res) => {
   try {
-    const userId = req.header('x-user-id');
-    if (!userId) return res.status(400).json({ error: 'Usuario no identificado' });
-    const asignadas = await Tarea.find({ analista: userId, estado: 'Pendiente' });
-    const ayer      = new Date(Date.now() - 24*60*60*1000);
-    const completadas = await Tarea.find({ analista: userId, estado: 'Finalizado', updatedAt: { $gte: ayer } });
-    const ahora   = new Date();
-    const manana  = new Date(Date.now() + 24*60*60*1000);
-    const porVencer = await Tarea.find({ analista: userId, estado: 'Pendiente', fechaLimite: { $gte: ahora, $lte: manana } });
-    return res.json({ asignadas: asignadas.map(t => ({ id: t._id, titulo: t.titulo })), completadas: completadas.map(t => ({ id: t._id, titulo: t.titulo })), porVencer: porVencer.map(t => ({ id: t._id, titulo: t.titulo })) });
+    const userId = req.header("x-user-id");
+    if (!userId)
+      return res.status(400).json({ error: "Usuario no identificado" });
+    const asignadas = await Tarea.find({
+      analista: userId,
+      estado: "Pendiente",
+    });
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const completadas = await Tarea.find({
+      analista: userId,
+      estado: "Finalizado",
+      updatedAt: { $gte: ayer },
+    });
+    const ahora = new Date();
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const porVencer = await Tarea.find({
+      analista: userId,
+      estado: "Pendiente",
+      fechaLimite: { $gte: ahora, $lte: manana },
+    });
+    return res.json({
+      asignadas: asignadas.map((t) => ({ id: t._id, titulo: t.titulo })),
+      completadas: completadas.map((t) => ({ id: t._id, titulo: t.titulo })),
+      porVencer: porVencer.map((t) => ({ id: t._id, titulo: t.titulo })),
+    });
   } catch (err) {
-    console.error('❌ Error en GET /notificaciones:', err);
-    return res.status(500).json({ error: 'Error obteniendo notificaciones' });
+    console.error("❌ Error en GET /notificaciones:", err);
+    return res.status(500).json({ error: "Error obteniendo notificaciones" });
   }
 });
 
+
 // - Ampliar fechas
-app.put('/tareas/ampliar-fecha/:id', async (req, res) => {
+app.put("/tareas/ampliar-fecha/:id", async (req, res) => {
   const user = req.user;
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
   const ruta = req.originalUrl;
 
-  if (!['admin', 'jefe'].includes(user.rol)) {
-    return res.status(403).json({ error: 'No tienes permisos paraampliar'});
+  if (!["admin", "jefe"].includes(user.rol)) {
+    return res.status(403).json({ error: "No tienes permisos paraampliar" });
   }
 
   try {
     const t = await Tarea.findById(req.params.id);
-    if (!t) return res.status(404).json({ error: 'Tarea no encontrada'});
+    if (!t) return res.status(404).json({ error: "Tarea no encontrada" });
 
     const { nuevaFecha } = req.body;
-    if (!nuevaFecha) return res.status(400).json({ error: 'Debe proporcionar una nueva fecha' });
+    if (!nuevaFecha)
+      return res
+        .status(400)
+        .json({ error: "Debe proporcionar una nueva fecha" });
 
     const fechaAnterior = t.fechaLimite;
     t.fechaLimite = nuevaFecha;
 
     t.historial = t.historial || [];
     t.historial.push({
-      accion: 'Ampliacion de fecha',
+      accion: "Ampliacion de fecha",
       analista_anterior: t.analista,
       analista_nuevo: t.analista,
       fechaLimite_anterior: fechaAnterior,
@@ -510,7 +615,7 @@ app.put('/tareas/ampliar-fecha/:id', async (req, res) => {
       estado_anterior: t.estado,
       estado_nuevo: t.estado,
       observacion: `Ampliada por ${user.username}`,
-      fecha: new Date()
+      fecha: new Date(),
     });
 
     await t.save();
@@ -520,68 +625,84 @@ app.put('/tareas/ampliar-fecha/:id', async (req, res) => {
       accion: `Ampliada por ${user.username}`,
       descripcion: `Tarea ${t._id} ampliada a ${nuevaFecha}`,
       ip,
-      ruta
+      ruta,
     });
 
     try {
       const analistaDoc = await Usuario.findById(t.analista).lean();
+
       if (analistaDoc?.telegramChatId) {
-        await sendMessage(analistaDoc.telegramChatId, msgAmpliacion(t, nuevaFecha));
+        await sendMessage(
+          analistaDoc.telegramChatId,
+          msgAmpliacion(t, nuevaFecha),
+        );
       }
+
+      await enviarAJefes(msgAmpliacion(t, nuevaFecha));
     } catch (e) {
-      console.warn('⚠️ No se pudo enviar Telegram en ampliación:', e.message);
+      console.warn("⚠️ No se pudo enviar Telegram en ampliación:", e.message);
     }
 
-    return res.json({ message: 'Fecha limite ampliada correctamente', tarea: t})
+    return res.json({
+      message: "Fecha limite ampliada correctamente",
+      tarea: t,
+    });
   } catch (err) {
-    console.error('❌ Error en PUT /tareas/ampliar-fecha/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor'})
+    console.error("❌ Error en PUT /tareas/ampliar-fecha/:id:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
 // — Listar tareas
-app.get('/tareas', async (req, res) => {
-  let { analista, estado, fechaInicio, fechaFin, titulo, placa, ticket } = req.query;
+app.get("/tareas", async (req, res) => {
+  let { analista, estado, fechaInicio, fechaFin, titulo, placa, ticket } =
+    req.query;
   const filtro = {};
   if (analista && Types.ObjectId.isValid(analista)) filtro.analista = analista;
   if (estado) filtro.estado = estado;
-  if (titulo) filtro.titulo = { $regex: titulo, $options: 'i' };
-  if (placa)  filtro.placa  = { $regex: placa,  $options: 'i' };
-  if (ticket) filtro.ticket = { $regex: ticket, $options: 'i' };
+  if (titulo) filtro.titulo = { $regex: titulo, $options: "i" };
+  if (placa) filtro.placa = { $regex: placa, $options: "i" };
+  if (ticket) filtro.ticket = { $regex: ticket, $options: "i" };
   if (fechaInicio || fechaFin) {
     filtro.fechaHora = {};
     if (fechaInicio) filtro.fechaHora.$gte = new Date(fechaInicio);
-    if (fechaFin)    filtro.fechaHora.$lte = new Date(fechaFin + 'T23:59:59');
+    if (fechaFin) filtro.fechaHora.$lte = new Date(fechaFin + "T23:59:59");
   }
   try {
-    const tareas = await Tarea.find(filtro).sort({ fechaHora: -1, _id: -1 }).populate('analista', 'username').lean();
+    const tareas = await Tarea.find(filtro)
+      .sort({ fechaHora: -1, _id: -1 })
+      .populate("analista", "username")
+      .lean();
+
     return res.json(tareas);
   } catch (err) {
-    console.error('❌ Error en GET /tareas:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en GET /tareas:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
 // — Obtener detalle de tarea
-app.get('/tareas/:id', async (req, res) => {
+app.get("/tareas/:id", async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ error: 'ID de tarea inválido o no proporcionado' });
+    return res
+      .status(400)
+      .json({ error: "ID de tarea inválido o no proporcionado" });
   }
 
   try {
     const t = await Tarea.findById(id).lean();
-    if (!t) return res.status(404).json({ error: 'Tarea no encontrada' });
+    if (!t) return res.status(404).json({ error: "Tarea no encontrada" });
     return res.json(t);
   } catch (err) {
-    console.error('❌ Error en GET /tareas/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en GET /tareas/:id:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
 // — Crear tarea
-app.post('/tareas', async (req, res) => {
+app.post("/tareas", async (req, res) => {
   const {
     titulo,
     descripcion,
@@ -590,7 +711,7 @@ app.post('/tareas', async (req, res) => {
     fechaLimite,
     ticket,
     placa,
-    observacion
+    observacion,
   } = req.body || {};
 
   const sanitizedTitulo = sanitizeInput(titulo);
@@ -609,49 +730,67 @@ app.post('/tareas', async (req, res) => {
     !ticket ||
     !placa
   ) {
-    return res.status(400).json({ error: 'Todos los campos obligatorios deben estar completos' });
+    return res
+      .status(400)
+      .json({ error: "Todos los campos obligatorios deben estar completos" });
   }
 
   try {
     const nuevaTarea = new Tarea({
       titulo: sanitizedTitulo,
       descripcion: sanitizedDescripcion,
-      fechaHora,           
+      fechaHora,
       analista,
       fechaLimite,
       ticket: sanitizedTicket,
       placa: sanitizedPlaca,
-      observacion: sanitizedObservacion
+      observacion: sanitizedObservacion,
+      creadaPor: req.user.username,
     });
     await nuevaTarea.save();
 
     // Auditoría
-    const xff = (req.headers['x-forwarded-for'] || '').toString();
-    const ip = xff.split(',')[0].trim() || req.ip || req.connection?.remoteAddress || 'desconocida';
+    const xff = (req.headers["x-forwarded-for"] || "").toString();
+    const ip =
+      xff.split(",")[0].trim() ||
+      req.ip ||
+      req.connection?.remoteAddress ||
+      "desconocida";
     const ruta = req.originalUrl;
 
     await Auditoria.create({
       usuario: req.user._id,
-      accion: 'Creación de tarea',
+      accion: "Creación de tarea",
       descripcion: `Tarea creada: ${sanitizedTitulo}`,
       ip,
-      ruta
+      ruta,
     });
 
     try {
+      const creador = req.user.username;
       const analistaDoc = await Usuario.findById(analista).lean();
+
       if (analistaDoc?.telegramChatId) {
-        await sendMessage(analistaDoc.telegramChatId, msgNuevaAsignacion(nuevaTarea));
+        await sendMessage(
+          analistaDoc.telegramChatId,
+          msgNuevaAsignacion(nuevaTarea, creador, analistaDoc.username),
+        );
       }
+
+      // enviar a jefes
+      await enviarAJefes(
+        msgNuevaAsignacion(nuevaTarea, creador, analistaDoc.username),
+      );
     } catch (e) {
-      console.warn('⚠️ No se pudo enviar Telegram en creación:', e.message);
+      console.warn("⚠️ No se pudo enviar Telegram en creación:", e.message);
     }
 
-    return res.status(201).json({ message: 'Tarea creada correctamente', tarea: nuevaTarea });
-
+    return res
+      .status(201)
+      .json({ message: "Tarea creada correctamente", tarea: nuevaTarea });
   } catch (err) {
-    console.error('❌ Error en POST /tareas:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en POST /tareas:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
@@ -664,9 +803,6 @@ app.post("/mantenimiento/plan/generar", async (req, res) => {
     const month = parseInt(req.query.month, 10);
     const { analistas } = req.body;
 
-    // -------------------------------
-    // Validaciones
-    // -------------------------------
     if (!year || year < 2000 || year > 2100) {
       return res.status(400).json({ error: "Año inválido" });
     }
@@ -676,41 +812,49 @@ app.post("/mantenimiento/plan/generar", async (req, res) => {
     }
 
     if (!Array.isArray(analistas) || analistas.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "Debe seleccionar al menos un analista" });
+      return res.status(400).json({
+        error: "Debe seleccionar al menos un analista",
+      });
     }
 
-    // -------------------------------
-    // Rango completo del mes
-    // -------------------------------
     const fechaInicio = new Date(year, month - 1, 1, 0, 0, 0);
     const fechaFin = new Date(year, month, 0, 23, 59, 59);
 
-    // -------------------------------
-    // Evitar duplicar plan mensual
-    // -------------------------------
+    //  evitar duplicar plan del mes
     const existePlan = await Tarea.exists({
       tipo: "mantenimiento",
-      fechaInicio: fechaInicio,
+      fechaInicio,
       fechaLimite: fechaFin,
     });
 
     if (existePlan) {
       return res.status(409).json({
-        error: "Ya existe un plan de mantenimiento para este mes",
+        error: "Ya existe un plan para este mes",
       });
     }
 
-    // -------------------------------
-    // Equipos que requieren mantenimiento
-    // -------------------------------
-    const equipos = await Equipo.find({
-      activo: true,
-      requiereMantenimiento: true,
-    });
+    //  TODOS los equipos
+    const equiposDB = await Equipo.find({
+      proximoMantenimiento: { $ne: null },
+    }).lean();
 
-    if (!equipos.length) {
+    //  ordenar por prioridad (vencidos primero)
+    equiposDB.sort(
+      (a, b) =>
+        new Date(a.proximoMantenimiento) - new Date(b.proximoMantenimiento),
+    );
+
+    //  equipos que YA tienen tarea
+    const equiposConTarea = await Tarea.find({
+      tipo: "mantenimiento",
+      creadaPorPlanMensual: true,
+    }).distinct("equipo");
+
+    const equiposDisponibles = equiposDB.filter(
+      (eq) => !equiposConTarea.includes(eq._id.toString()),
+    );
+
+    if (!equiposDisponibles.length) {
       return res.json({
         analistas: [],
         total: {
@@ -721,52 +865,90 @@ app.post("/mantenimiento/plan/generar", async (req, res) => {
       });
     }
 
-    // -------------------------------
-    // Asignación equitativa (round-robin)
-    // SOLO entre analistas seleccionados
-    // -------------------------------
+    //  dividir en 12 meses
+    const equiposPorMes = Math.ceil(equiposDisponibles.length / 12);
+
+    const inicio = (month - 1) * equiposPorMes;
+    const fin = inicio + equiposPorMes;
+
+    const equiposMes = equiposDisponibles.slice(inicio, fin);
+
+    //  crear tareas sin duplicar
     let idx = 0;
     const tareasCreadas = [];
 
-    for (const equipo of equipos) {
+    for (const equipo of equiposMes) {
       const analistaAsignadoId = analistas[idx % analistas.length];
       idx++;
 
+      const placaLimpia = (equipo.placa || "").toString().trim();
+      const placaTexto = placaLimpia ? `- Placa ${placaLimpia}` : "";
+
       const tarea = await Tarea.create({
-        titulo: `Mantenimiento ${equipo.marca} ${equipo.modelo}`,
-        descripcion: `Mantenimiento preventivo del equipo ${
-          equipo.serial || equipo.placa || ""
-        }`,
+        titulo: `Mantenimiento equipo con serial ${
+          equipo.serial || "N/A"
+        } y placa ${placaLimpia || "N/A"}`,
+
+
+        descripcion: `Mantenimiento preventivo del equipo con serial ${
+          equipo.serial || "N/A"
+        } y placa ${placaLimpia || "N/A"}`,
+
         tipo: "mantenimiento",
 
         equipo: equipo._id,
         analista: analistaAsignadoId,
 
-        fechaInicio: fechaInicio,
+        fechaInicio,
         fechaLimite: fechaFin,
 
-        estado: "pendiente",
+        ticket: "",
+        placa: placaLimpia,
+
+        estado: "Pendiente",
         creadaPorPlanMensual: true,
       });
 
       tareasCreadas.push(tarea);
     }
-    // -------------------------------
-    // Resumen para frontend
-    // -------------------------------
+
     return res.json({
       analistas: analistas.map((id) => ({ _id: id })),
       total: {
-        totalEquiposElegibles: equipos.length,
+        totalEquiposElegibles: equiposDisponibles.length,
         creadasEsteMes: tareasCreadas.length,
-        sobrantesParaProximoMes: 0,
+        sobrantesParaProximoMes:
+          equiposDisponibles.length - tareasCreadas.length,
       },
     });
   } catch (err) {
-    console.error("❌ Error generando plan mensual:", err);
-    return res
-      .status(500)
-      .json({ error: "Error interno al generar plan mensual" });
+    console.error("❌ Error generando plan:", err);
+    return res.status(500).json({
+      error: "Error interno al generar plan mensual",
+    });
+  }
+});
+
+// -------------------------------
+// Resumen para frontend
+// ------------------------------
+
+app.get("/ubicaciones/pisos", async (req, res) => {
+  try {
+    const pisos = await Ubicacion.find({ tipo: "piso" });
+    res.json(pisos);
+  } catch (err) {
+    console.error("Error obteniendo pisos:", err);
+    res.status(500).json({ error: "Error obteniendo pisos" });
+  }
+});
+
+app.get("/ubicaciones/:id/hijos", async (req, res) => {
+  try {
+    const hijos = await Ubicacion.find({ padre: req.params.id });
+    res.json(hijos);
+  } catch (err) {
+    res.status(500).json({ error: "Error obteniendo hijos" });
   }
 });
 
@@ -807,19 +989,29 @@ app.put("/tareas/terminar/:id", async (req, res) => {
         if (eq) {
           eq.ultimoMantenimientoFecha = new Date();
           eq.ultimoMantenimientoPor = req.user?._id || null;
-          eq.ultimoMantenimientoCambios = (req.body.observacion || "").slice(0,1000);
-          eq.recalcularProximo(); // = ultimo + 6 meses
+          eq.ultimoMantenimientoCambios = (req.body.observacion || "").slice(
+            0,
+            1000,
+          );
           await eq.save();
         }
       }
     } catch (e) {
       console.warn(
         "⚠️ No se pudo actualizar Equipo al finalizar mantenimiento:",
-        e.message
+        e.message,
       );
     }
 
     await t.save();
+
+    const creador = t.creadaPor || "Sistema";
+    const analistaDoc = await Usuario.findById(t.analista).lean();
+    const cerradoPor = req.user.username;
+
+    await enviarAJefes(
+      msgFinalizada(t, cerradoPor, analistaDoc.username, creador),
+    );
 
     // 3) Auditoría
     const xff = (req.headers["x-forwarded-for"] || "").toString();
@@ -848,14 +1040,14 @@ app.put("/tareas/terminar/:id", async (req, res) => {
           Usuario.findById(t.analista, { telegramChatId: 1 }).lean(),
           Usuario.find(
             { rol: "jefe", telegramChatId: { $ne: null } },
-            { telegramChatId: 1 }
+            { telegramChatId: 1 },
           ).lean(),
         ]);
 
         const jobs = [];
         if (analista?.telegramChatId) {
           jobs.push(
-            sendMessage(analista.telegramChatId, msgFinalizada(t, closedBy))
+            sendMessage(analista.telegramChatId, msgFinalizada(t, closedBy)),
           );
         }
         for (const j of jefes) {
@@ -865,7 +1057,7 @@ app.put("/tareas/terminar/:id", async (req, res) => {
 
         await Tarea.updateOne(
           { _id: t._id, finalizadaNotificada: { $ne: true } },
-          { $set: { finalizadaNotificada: true } }
+          { $set: { finalizadaNotificada: true } },
         );
       } catch (e) {
         console.warn("⚠️ Aviso finalizada falló:", e.message);
@@ -880,43 +1072,52 @@ app.put("/tareas/terminar/:id", async (req, res) => {
 });
 
 // — Reasignar tarea
-app.put('/tareas/reasignar/:id', async (req, res) => {
+app.put("/tareas/reasignar/:id", async (req, res) => {
   try {
     const t = await Tarea.findById(req.params.id);
     if (!t) {
-      return res.status(404).json({ error: 'Tarea no encontrada' });
+      return res.status(404).json({ error: "Tarea no encontrada" });
     }
 
-    if (t.estado === 'Finalizado') {
-      return res.status(400).json({ error: 'No se puede reasignar una tarea finalizada' });
+    if (t.estado === "Finalizado") {
+      return res
+        .status(400)
+        .json({ error: "No se puede reasignar una tarea finalizada" });
     }
 
     const { analista_nuevo, fechaLimite, observacion } = req.body;
 
     // Validar que todos los campos existan y sean válidos
     if (
-      typeof analista_nuevo !== "string" || !analista_nuevo.trim() ||
-      typeof fechaLimite !== "string" || !fechaLimite.trim() ||
-      typeof observacion !== "string" || observacion.trim().length < 5
+      typeof analista_nuevo !== "string" ||
+      !analista_nuevo.trim() ||
+      typeof fechaLimite !== "string" ||
+      !fechaLimite.trim() ||
+      typeof observacion !== "string" ||
+      observacion.trim().length < 5
     ) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios o están vacíos' });
+      return res
+        .status(400)
+        .json({ error: "Faltan campos obligatorios o están vacíos" });
     }
 
     // Validar que el analista nuevo exista (opcional pero recomendable)
     const analistaExiste = await Usuario.exists({ _id: analista_nuevo });
     if (!analistaExiste) {
-      return res.status(400).json({ error: 'El analista especificado no existe' });
+      return res
+        .status(400)
+        .json({ error: "El analista especificado no existe" });
     }
 
     const sanitizedObservacion = sanitizeInput(observacion);
     const cambio = {
-      accion: 'Reasignación',
+      accion: "Reasignación",
       analista_anterior: t.analista,
       analista_nuevo,
       fechaLimite_anterior: t.fechaLimite,
       fechaLimite_nueva: fechaLimite,
       observacion: sanitizedObservacion,
-      fecha: new Date()
+      fecha: new Date(),
     };
 
     //Convertir a ObjectId antes de asignar
@@ -932,49 +1133,59 @@ app.put('/tareas/reasignar/:id', async (req, res) => {
     await t.save();
 
     // Registro en auditoría
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     const ruta = req.originalUrl;
 
     await Auditoria.create({
       usuario: req.user._id,
-      accion: 'Reasignación de tarea',
+      accion: "Reasignación de tarea",
       descripcion: `Tarea reasignada a analista: ${analista_nuevo}`,
       ip,
-      ruta
+      ruta,
     });
 
-    return res.json({ message: 'Tarea reasignada correctamente', tarea: t });
+    const analistaAnterior = await Usuario.findById(
+      cambio.analista_anterior,
+    ).lean();
+    const analistaNuevo = await Usuario.findById(analista_nuevo).lean();
 
+    await enviarAJefes(
+      msgReasignacion(
+        t,
+        analistaAnterior?.username || "Desconocido",
+        analistaNuevo?.username || "Desconocido",
+      ),
+    );
+    return res.json({ message: "Tarea reasignada correctamente", tarea: t });
   } catch (err) {
-    console.error('❌ Error en PUT /tareas/reasignar/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en PUT /tareas/reasignar/:id:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
 // — Eliminar tarea
-app.delete('/tareas/:id', async (req, res) => {
+app.delete("/tareas/:id", async (req, res) => {
   try {
     const t = await Tarea.findByIdAndDelete(req.params.id);
-    if (!t) return res.status(404).json({ error: 'Tarea no encontrada' });
+    if (!t) return res.status(404).json({ error: "Tarea no encontrada" });
 
     // Auditoría
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     const ruta = req.originalUrl;
     await Auditoria.create({
       usuario: req.user._id,
-      accion: 'Eliminación de tarea',
+      accion: "Eliminación de tarea",
       descripcion: `Tarea eliminada: ${t.titulo}`,
       ip,
-      ruta
+      ruta,
     });
 
-    return res.json({ message: 'Tarea eliminada correctamente' });
+    return res.json({ message: "Tarea eliminada correctamente" });
   } catch (err) {
-    console.error('❌ Error en DELETE /tareas/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ Error en DELETE /tareas/:id:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
-
 
 // - Crear equipo
 app.post("/equipos", async (req, res) => {
@@ -993,10 +1204,15 @@ app.post("/equipos", async (req, res) => {
       ultimoMantenimientoCambios,
     } = req.body || {};
 
-    if (!marca || !modelo || !serial || !ubicacion || !dominio || !fechaCompra) {
-      return res
-        .status(400)
-        .json({ error: "Faltan campos obligatorios" });
+    if (
+      !marca ||
+      !modelo ||
+      !serial ||
+      !ubicacion ||
+      !dominio ||
+      !fechaCompra
+    ) {
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
     const equipo = new Equipo({
@@ -1026,13 +1242,13 @@ app.post("/equipos", async (req, res) => {
 });
 
 // Listar equipos
-app.get('/equipos', async (_req, res) => {
+app.get("/equipos", async (_req, res) => {
   try {
     const list = await Equipo.find().sort({ createdAt: -1 }).lean();
     return res.json(list);
   } catch (err) {
-    console.error('❌ GET /equipos:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ GET /equipos:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
@@ -1060,30 +1276,36 @@ app.put("/equipos/:id", async (req, res) => {
 });
 
 // Eliminar equipo
-app.delete('/equipos/:id', async (req, res) => {
+app.delete("/equipos/:id", async (req, res) => {
   try {
     const e = await Equipo.findByIdAndDelete(req.params.id);
-    if (!e) return res.status(404).json({ error: 'Equipo no encontrado' });
-    return res.json({ message: 'Equipo eliminado' });
+    if (!e) return res.status(404).json({ error: "Equipo no encontrado" });
+    return res.json({ message: "Equipo eliminado" });
   } catch (err) {
-    console.error('❌ DELETE /equipos/:id:', err);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    console.error("❌ DELETE /equipos/:id:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
 // Generar plan de mantenimiento (calculado desde el esquema)
-app.get('/equipos/proximos', async (req, res) => {
+app.get("/equipos/proximos", async (req, res) => {
   try {
     const hoy = new Date();
 
     const equipos = await Equipo.find({
-      proximoMantenimiento: { $lte: new Date(hoy.getFullYear(), hoy.getMonth() + 1, hoy.getDate()) }
-    }).sort({ proximoMantenimiento: 1 }).lean();
+      proximoMantenimiento: {
+        $lte: new Date(hoy.getFullYear(), hoy.getMonth() + 1, hoy.getDate()),
+      },
+    })
+      .sort({ proximoMantenimiento: 1 })
+      .lean();
 
     return res.json(equipos);
   } catch (err) {
     console.error("❌ GET /equipos/proximos:", err);
-    return res.status(500).json({ error: "Error generando plan de mantenimiento" });
+    return res
+      .status(500)
+      .json({ error: "Error generando plan de mantenimiento" });
   }
 });
 
@@ -1118,7 +1340,6 @@ app.get("/ubicaciones/:id/hijos", async (req, res) => {
     res.status(500).json({ error: "Error obteniendo ubicaciones hijas" });
   }
 });
-
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 5) Arrancar el servidor
