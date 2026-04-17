@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
@@ -15,60 +16,46 @@ const Equipo = require("./models/Equipo");
 const Ubicacion = require("./models/Ubicacion");
 const { REFUSED } = require("dns");
 const Auditoria = require("./models/Auditoria");
-const {
-  sendMessage,
-  msgProxima,
-  msgVencida,
-  msgNuevaAsignacion,
-  msgReasignacion,
-  msgAmpliacion,
-  msgFinalizada,
-} = require("./helpers/telegram");
+const {sendMessage,msgProxima,msgVencida,msgNuevaAsignacion,msgReasignacion,msgAmpliacion,msgFinalizada,} = require("./helpers/telegram");
 const cron = require("node-cron");
 const { getStatusClass } = require("./helpers/status");
 const { resolve } = require("path/win32");
 const app = express();
-const port = 3000;
-
-app.set("trust proxy", true);
-const options = {
-  key: fs.readFileSync("./localhost-key.pem"),
-  cert: fs.readFileSync("./localhost.pem"),
-};
+const port = process.env.PORT || 3000;
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 1) Conexión a MongoDB
 // ───────────────────────────────────────────────────────────────────────────────
 mongoose
-  .connect("mongodb://localhost:27017/entregas_turnos")
-  .then(() => console.log("✅ Conectado a MongoDB"))
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log("Conectado a MongoDB Atlas"))
   .catch((err) => {
-    console.error("❌ Error conectando a MongoDB:", err);
+    console.error("Error conectando a MongoDB:", err);
     process.exit(1);
   });
 
 // ───────────────────────────────────────────────────────────────────────────────
 // 2) Middlewares
 // ───────────────────────────────────────────────────────────────────────────────
+
+app.set("trust proxy", true);
+const options = {
+  key: fs.readFileSync("./localhost-key.pem"),
+  cert: fs.readFileSync("./localhost.pem"),
+};
 app.use(cors());
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, "public")));
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "index.html"));
 });
-
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "login.html"));
 });
-
 app.get("/registro", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "registro.html"));
 });
-
 app.use(mongoSanitize());
-
 app.use(async (req, res, next) => {
   const publicRoutes = [
     "/",
@@ -1345,6 +1332,6 @@ app.get("/ubicaciones/:id/hijos", async (req, res) => {
 // 5) Arrancar el servidor
 // ───────────────────────────────────────────────────────────────────────────────
 
-https.createServer(options, app).listen(port, () => {
-  console.log(`🚀 Servidor HTTPS corriendo en https://localhost:${port}`);
+app.listen(port, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${port}`);
 });

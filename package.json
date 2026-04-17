@@ -1,6 +1,6 @@
 {
   "name": "proyecto-entrega",
-  "version": "1.0.0",
+  "version": "2.1.1",
   "description": "Entrega de turno",
   "main": "server.js",
   "scripts": {
