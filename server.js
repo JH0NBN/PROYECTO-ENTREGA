@@ -46,6 +46,7 @@ const options = {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "index.html"));
 });
@@ -71,6 +72,7 @@ app.use(async (req, res, next) => {
     req.path.startsWith("/css/") ||
     req.path.startsWith("/js/") ||
     req.path.startsWith("/images/") ||
+    req.path.startsWith("/uploads/") ||
     req.path.endsWith(".css") ||
     req.path.endsWith(".js") ||
     req.path.endsWith(".png") ||
@@ -80,6 +82,7 @@ app.use(async (req, res, next) => {
   ) {
     return next();
   }
+  
 
   const userId = req.header("x-user-id");
   const sessionToken = req.header("x-session-token");
