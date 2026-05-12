@@ -474,7 +474,7 @@ app.put("/usuarios/:id/telegram", async (req, res) => {
   }
 });
 
-// — Generar Informe (Excel)
+// — Genera Informe tareas
 app.get("/tareas/informe", async (req, res) => {
   const { fechaInicio, fechaFin, analista, estado } = req.query;
   const filtro = {};
@@ -533,6 +533,68 @@ app.get("/tareas/informe", async (req, res) => {
     res.end();
   } catch (err) {
     console.error("❌ Error en GET /tareas/informe:", err);
+    res.status(500).json({ error: "Error generando informe" });
+  }
+});
+
+// — Genera Informe tareas
+app.get("/equipos/informe", async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin } = req.query;
+
+    const filtro = {};
+
+    if (fechaInicio || fechaFin) {
+      filtro.createdAt = {};
+      if (fechaInicio) filtro.createdAt.$gte = new Date(fechaInicio);
+      if (fechaFin) filtro.createdAt.$lte = new Date(fechaFin + "T23:59:59");
+    }
+
+    const equipos = await Equipo.find(filtro).lean();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Mantenimiento");
+
+    ws.columns = [
+      { header: "Nombre", key: "nombre" },
+      { header: "Descripción", key: "descripcion" },
+      { header: "Estado", key: "estado" },
+      { header: "Fecha Creación", key: "fecha" },
+    ];
+
+    equipos.forEach((e) => {
+      ws.addRow({
+        nombre: e.nombre,
+        descripcion: e.descripcion,
+        estado: e.estado,
+        fecha: new Date(e.createdAt).toLocaleDateString(),
+      });
+    });
+
+    // Auto tamaño columnas
+    ws.columns.forEach((col) => {
+      let max = col.header.length;
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        const v = (cell.value || "").toString();
+        if (v.length > max) max = v.length;
+      });
+      col.width = max + 2;
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="Informe_Mantenimiento.xlsx"`
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    await wb.xlsx.write(res);
+    res.end();
+
+  } catch (err) {
+    console.error("❌ Error informe mantenimiento:", err);
     res.status(500).json({ error: "Error generando informe" });
   }
 });

@@ -32,4 +32,8 @@ const ubicacionSchema = new mongoose.Schema(
 // Índice útil para búsquedas jerárquicas
 ubicacionSchema.index({ tipo: 1, padre: 1 });
 
-module.exports = mongoose.model("Ubicacion", ubicacionSchema);
+module.exports = mongoose.model(
+  "Ubicacion",
+  ubicacionSchema,
+  "ubicaciones"
+);
