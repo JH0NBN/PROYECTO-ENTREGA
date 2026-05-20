@@ -753,8 +753,6 @@ app.get("/equipos/informe", async (req, res) => {
    INFORME MANTENIMIENTOS
 -------------------------------------------------------------------------- */
 
-const ExcelJS = require("exceljs");
-
 app.get("/equipos/informe", async (req, res) => {
   try {
     const {
