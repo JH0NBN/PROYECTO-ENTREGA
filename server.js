@@ -336,6 +336,156 @@ app.post("/login", async (req, res) => {
   }
 });
 
+
+// - RESET PASSWORD
+
+const crypto = require("crypto");
+
+app.post("/reset-password", async (req, res) => {
+  const ip =
+    req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+
+  const ruta = req.originalUrl;
+
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({
+      error: "Todos los campos son obligatorios",
+    });
+  }
+
+  // Validar contraseña
+  const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+
+  if (!regex.test(password)) {
+    return res.status(400).json({
+      error:
+        "La contraseña debe tener ≥8 caracteres, incluir letra, número y carácter especial.",
+    });
+  }
+
+  try {
+    // Buscar usuario con token válido
+    const user = await Usuario.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: "Token inválido o expirado",
+      });
+    }
+
+    // Encriptar nueva contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    user.password = hashedPassword;
+
+    // Limpiar token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    // Reiniciar bloqueos
+    user.loginAttempts = 0;
+    user.lockUntil = null;
+
+    await user.save();
+
+    // Auditoría
+    await Auditoria.create({
+      usuario: user._id,
+      accion: "Restablecimiento de contraseña",
+      descripcion: `El usuario ${user.username} restableció su contraseña correctamente.`,
+      ip,
+      ruta,
+    });
+
+    return res.json({
+      message: "Contraseña restablecida correctamente",
+    });
+  } catch (err) {
+    console.error("❌ Error en POST /reset-password:", err);
+
+    return res.status(500).json({
+      error: "Error en el servidor",
+    });
+  }
+});
+
+/* --------------------------------------------------------------------------
+   FORGOT PASSWORD
+-------------------------------------------------------------------------- */
+app.post("/forgot-password", async (req, res) => {
+  const ip =
+    req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+
+  const ruta = req.originalUrl;
+
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({
+      error: "El usuario es obligatorio",
+    });
+  }
+
+  try {
+    const user = await Usuario.findOne({ username });
+
+    // Respuesta genérica por seguridad
+    if (!user) {
+      return res.json({
+        message:
+          "Si el usuario existe, se enviarán las instrucciones.",
+      });
+    }
+
+    // Generar token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    user.resetPasswordToken = resetToken;
+
+    // Expira en 30 minutos
+    user.resetPasswordExpires = Date.now() + 30 * 60 * 1000;
+
+    await user.save();
+
+    // URL recuperación
+    const resetUrl = `${req.protocol}://${req.get(
+      "host"
+    )}/reset-password?token=${resetToken}`;
+
+    /*
+      AQUÍ ENVÍAS EL CORREO
+      Ejemplo con nodemailer
+    */
+
+    console.log("🔗 Link recuperación:", resetUrl);
+
+    // Auditoría
+    await Auditoria.create({
+      usuario: user._id,
+      accion: "Solicitud recuperación contraseña",
+      descripcion: `El usuario ${user.username} solicitó recuperación de contraseña.`,
+      ip,
+      ruta,
+    });
+
+    return res.json({
+      message:
+        "Si el usuario existe, se enviarán las instrucciones.",
+    });
+  } catch (err) {
+    console.error("❌ Error en POST /forgot-password:", err);
+
+    return res.status(500).json({
+      error: "Error en el servidor",
+    });
+  }
+});
+
 // - logout
 app.post("/logout", async (req, res) => {
   const userId = req.header("x-user-id");

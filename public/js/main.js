@@ -354,6 +354,88 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* --------------------------------------------------------------------------
+   6.5 RESTABLECER CONTRASEÑA
+-------------------------------------------------------------------------- */
+const formResetPassword = document.getElementById("formResetPassword");
+
+if (formResetPassword) {
+  formResetPassword.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const password = document
+      .getElementById("resetPassword")
+      .value.trim();
+
+    const confirmPassword = document
+      .getElementById("confirmPassword")
+      .value.trim();
+
+    const errorContainer = document.getElementById(
+      "resetPasswordError"
+    );
+
+    errorContainer.textContent = "";
+
+    if (!password || !confirmPassword) {
+      return (errorContainer.textContent =
+        "Todos los campos son obligatorios");
+    }
+
+    if (password.length < 6) {
+      return (errorContainer.textContent =
+        "La contraseña debe tener mínimo 6 caracteres");
+    }
+
+    if (password !== confirmPassword) {
+      return (errorContainer.textContent =
+        "Las contraseñas no coinciden");
+    }
+
+    try {
+      // Obtener token desde URL
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+
+      if (!token) {
+        return (errorContainer.textContent =
+          "Token inválido o expirado");
+      }
+
+      const res = await fetch(`${API_BASE}/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("✅ Contraseña restablecida correctamente");
+
+        formResetPassword.reset();
+
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1500);
+      } else {
+        errorContainer.textContent =
+          data.error || "Error al restablecer contraseña";
+      }
+    } catch (error) {
+      console.error(error);
+
+      errorContainer.textContent =
+        "Error del servidor, intenta nuevamente";
+    }
+  });
+}
+
+  /* --------------------------------------------------------------------------
      7. Logout
   -------------------------------------------------------------------------- */
   document.getElementById("btnCerrarSesion")?.addEventListener("click", () => {
