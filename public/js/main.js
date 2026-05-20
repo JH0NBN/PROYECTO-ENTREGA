@@ -2239,6 +2239,7 @@ function initInformeMantenimientos() {
   function bindFiltrosEquipos() {
     const filtroNombre = document.getElementById("filtro-equipo-nombre");
     const filtroSerial = document.getElementById("filtro-equipo-serial");
+    const filtroPlaca = document.getElementById("filtro-equipo-placa");
     const filtroEstado = document.getElementById("filtro-equipo-estado");
     const filtroPiso = document.getElementById("eq-piso");
     const filtroArea = document.getElementById("eq-area");
@@ -2249,6 +2250,9 @@ function initInformeMantenimientos() {
 
     if (filtroSerial)
       filtroSerial.addEventListener("input", aplicarFiltrosEquipos);
+
+    if (filtroPlaca)
+      filtroPlaca.addEventListener("input", aplicarFiltrosEquipos);
 
     if (filtroEstado)
       filtroEstado.addEventListener("change", aplicarFiltrosEquipos);
@@ -2272,6 +2276,10 @@ function initInformeMantenimientos() {
       document.getElementById("filtro-equipo-serial")?.value.toLowerCase() ||
       "";
 
+    const placa =
+      document.getElementById("filtro-equipo-placa")?.value.toLowerCase() ||
+      "";
+
     const estado = document.getElementById("filtro-equipo-estado")?.value || "";
 
     const piso = document.getElementById("eq-piso")?.value || "";
@@ -2285,6 +2293,8 @@ function initInformeMantenimientos() {
         !nombre || (e.dominio && e.dominio.toLowerCase().includes(nombre));
 
       const matchSerial = !serial || e.serial?.toLowerCase().includes(serial);
+
+      const matchPlaca = !placa || e.placa?.toLowerCase().includes(placa);
 
       let matchEstado = true;
 
@@ -2308,13 +2318,16 @@ function initInformeMantenimientos() {
 
       const matchSubarea = !subarea || e.subarea === subarea;
 
+      const matchPlaca = !placa || e.placa?.toLowerCase().includes(placa);
+
       return (
         matchNombre &&
         matchSerial &&
         matchEstado &&
         matchPiso &&
         matchArea &&
-        matchSubarea
+        matchSubarea &&
+        matchPlaca
       );
     });
 
