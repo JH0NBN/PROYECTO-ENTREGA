@@ -749,6 +749,348 @@ app.get("/equipos/informe", async (req, res) => {
   }
 });
 
+/* --------------------------------------------------------------------------
+   INFORME MANTENIMIENTOS
+-------------------------------------------------------------------------- */
+
+const ExcelJS = require("exceljs");
+
+app.get("/equipos/informe", async (req, res) => {
+  try {
+    const {
+      fechaInicio,
+      fechaFin,
+      estado,
+    } = req.query;
+
+    /* ----------------------------------------------------------------------
+       FILTROS
+    ---------------------------------------------------------------------- */
+
+    const filtro = {};
+
+    // Filtro fechas
+    if (fechaInicio || fechaFin) {
+      filtro.createdAt = {};
+
+      if (fechaInicio) {
+        filtro.createdAt.$gte = new Date(fechaInicio);
+      }
+
+      if (fechaFin) {
+        filtro.createdAt.$lte = new Date(
+          fechaFin + "T23:59:59"
+        );
+      }
+    }
+
+    // Filtro estado
+    if (estado) {
+      filtro.estado = estado;
+    }
+
+    /* ----------------------------------------------------------------------
+       CONSULTA
+    ---------------------------------------------------------------------- */
+
+    const equipos = await Equipo.find(filtro)
+      .populate("usuario", "username")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    /* ----------------------------------------------------------------------
+       EXCEL
+    ---------------------------------------------------------------------- */
+
+    const wb = new ExcelJS.Workbook();
+
+    wb.creator = "Sistema";
+
+    wb.created = new Date();
+
+    const ws = wb.addWorksheet("Mantenimientos");
+
+    /* ----------------------------------------------------------------------
+       COLUMNAS
+    ---------------------------------------------------------------------- */
+
+    ws.columns = [
+      {
+        header: "ID",
+        key: "_id",
+        width: 30,
+      },
+      {
+        header: "Equipo",
+        key: "nombre",
+        width: 30,
+      },
+      {
+        header: "Descripción",
+        key: "descripcion",
+        width: 45,
+      },
+      {
+        header: "Estado",
+        key: "estado",
+        width: 20,
+      },
+      {
+        header: "Analista",
+        key: "usuario",
+        width: 25,
+      },
+      {
+        header: "Fecha Creación",
+        key: "fecha",
+        width: 22,
+      },
+    ];
+
+    /* ----------------------------------------------------------------------
+       ESTILOS HEADER
+    ---------------------------------------------------------------------- */
+
+    const headerRow = ws.getRow(1);
+
+    headerRow.font = {
+      bold: true,
+      color: { argb: "FFFFFF" },
+      size: 12,
+    };
+
+    headerRow.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
+
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "1E40AF" },
+    };
+
+    /* ----------------------------------------------------------------------
+       FILAS
+    ---------------------------------------------------------------------- */
+
+    equipos.forEach((e) => {
+      ws.addRow({
+        _id: e._id.toString(),
+        nombre: e.nombre || "N/A",
+        descripcion: e.descripcion || "N/A",
+        estado: e.estado || "N/A",
+        usuario: e.usuario?.username || "Sin asignar",
+        fecha: e.createdAt
+          ? new Date(e.createdAt).toLocaleString()
+          : "N/A",
+      });
+    });
+
+    /* ----------------------------------------------------------------------
+       BORDES
+    ---------------------------------------------------------------------- */
+
+    ws.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "left",
+          wrapText: true,
+        };
+      });
+    });
+
+    /* ----------------------------------------------------------------------
+       FILTRO AUTOMÁTICO
+    ---------------------------------------------------------------------- */
+
+    ws.autoFilter = {
+      from: "A1",
+      to: "F1",
+    };
+
+    /* ----------------------------------------------------------------------
+       RESPONSE
+    ---------------------------------------------------------------------- */
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Informe_Mantenimientos.xlsx`
+    );
+
+    await wb.xlsx.write(res);
+
+    res.end();
+
+  } catch (err) {
+    console.error("❌ Error generando informe:", err);
+
+    res.status(500).json({
+      error: "Error generando informe",
+    });
+  }
+});
+
+/* --------------------------------------------------------------------------
+   INFORME MANTENIMIENTOS
+-------------------------------------------------------------------------- */
+
+app.get("/equipos/informe", async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin } = req.query;
+
+    const filtro = {};
+
+    if (fechaInicio || fechaFin) {
+      filtro.createdAt = {};
+
+      if (fechaInicio) {
+        filtro.createdAt.$gte = new Date(fechaInicio);
+      }
+
+      if (fechaFin) {
+        filtro.createdAt.$lte = new Date(
+          fechaFin + "T23:59:59"
+        );
+      }
+    }
+
+    const equipos = await Equipo.find(filtro)
+      .populate("usuario", "username")
+      .lean();
+
+    const wb = new ExcelJS.Workbook();
+
+    const ws = wb.addWorksheet("Mantenimientos");
+
+    /* ----------------------------------------------------------------------
+       COLUMNAS
+    ---------------------------------------------------------------------- */
+
+    ws.columns = [
+      {
+        header: "ID",
+        key: "_id",
+        width: 28,
+      },
+      {
+        header: "Equipo",
+        key: "nombre",
+        width: 30,
+      },
+      {
+        header: "Descripción",
+        key: "descripcion",
+        width: 45,
+      },
+      {
+        header: "Estado",
+        key: "estado",
+        width: 20,
+      },
+      {
+        header: "Analista",
+        key: "usuario",
+        width: 25,
+      },
+      {
+        header: "Fecha Creación",
+        key: "fecha",
+        width: 20,
+      },
+    ];
+
+    /* ----------------------------------------------------------------------
+       HEADER STYLE
+    ---------------------------------------------------------------------- */
+
+    ws.getRow(1).font = {
+      bold: true,
+      color: { argb: "FFFFFF" },
+    };
+
+    ws.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "2563EB" },
+    };
+
+    ws.getRow(1).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
+
+    /* ----------------------------------------------------------------------
+       DATA
+    ---------------------------------------------------------------------- */
+
+    equipos.forEach((e) => {
+      ws.addRow({
+        _id: e._id.toString(),
+        nombre: e.nombre || "N/A",
+        descripcion: e.descripcion || "N/A",
+        estado: e.estado || "N/A",
+        usuario: e.usuario?.username || "Sin asignar",
+        fecha: e.createdAt
+          ? new Date(e.createdAt).toLocaleDateString()
+          : "N/A",
+      });
+    });
+
+    /* ----------------------------------------------------------------------
+       BORDES
+    ---------------------------------------------------------------------- */
+
+    ws.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    });
+
+    /* ----------------------------------------------------------------------
+       RESPONSE
+    ---------------------------------------------------------------------- */
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Informe_Mantenimientos.xlsx`
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    await wb.xlsx.write(res);
+
+    res.end();
+  } catch (err) {
+    console.error("❌ Error informe mantenimiento:", err);
+
+    res.status(500).json({
+      error: "Error generando informe",
+    });
+  }
+});
+
 // — Notificaciones
 app.get("/notificaciones", async (req, res) => {
   try {
