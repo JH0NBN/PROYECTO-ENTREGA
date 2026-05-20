@@ -2241,9 +2241,9 @@ function initInformeMantenimientos() {
     const filtroSerial = document.getElementById("filtro-equipo-serial");
     const filtroPlaca = document.getElementById("filtro-equipo-placa");
     const filtroEstado = document.getElementById("filtro-equipo-estado");
-    const filtroPiso = document.getElementById("eq-piso");
-    const filtroArea = document.getElementById("eq-area");
-    const filtroSubarea = document.getElementById("eq-subarea");
+    const filtroPiso = document.getElementById("filtro-piso");
+    const filtroArea = document.getElementById("filtro-area");
+    const filtroSubarea = document.getElementById("filtro-subarea");
 
     if (filtroNombre)
       filtroNombre.addEventListener("input", aplicarFiltrosEquipos);
@@ -2282,11 +2282,11 @@ function initInformeMantenimientos() {
 
     const estado = document.getElementById("filtro-equipo-estado")?.value || "";
 
-    const piso = document.getElementById("eq-piso")?.value || "";
+    const piso = document.getElementById("filtro-piso")?.value || "";
 
-    const area = document.getElementById("eq-area")?.value || "";
+    const area = document.getElementById("filtro-area")?.value || "";
 
-    const subarea = document.getElementById("eq-subarea")?.value || "";
+    const subarea = document.getElementById("filtro-subarea")?.value || "";
 
     const filtrados = equiposData.filter((e) => {
       const matchNombre =
@@ -2317,8 +2317,6 @@ function initInformeMantenimientos() {
       const matchArea = !area || e.area === area;
 
       const matchSubarea = !subarea || e.subarea === subarea;
-
-      const matchPlaca = !placa || e.placa?.toLowerCase().includes(placa);
 
       return (
         matchNombre &&
