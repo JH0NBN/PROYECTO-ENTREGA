@@ -230,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // EQUIPOS
     if (id === "inventario") {
       try {
-        bindFormEquipo?.();
+        //bindFormEquipo?.();
 
         requestAnimationFrame(async () => {
           await cargarPisos();
@@ -2048,7 +2048,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   //EDITAR EQUIPO
-
   document.addEventListener("submit", (e) => {
     if (!e.target || e.target.id !== "form-equipo") return;
 
@@ -2080,8 +2079,8 @@ document.addEventListener("DOMContentLoaded", () => {
       equipo.ultimoMantenimientoFecha
         ? equipo.ultimoMantenimientoFecha.slice(0, 10)
         : "";
-    document.getElementById("eq-ult-por").value =
-      equipo.ultimoMantenimientoPor || "";
+    /*document.getElementById("eq-ult-por").value =
+      equipo.ultimoMantenimientoPor || "";*/
     document.getElementById("eq-ult-cambios").value =
       equipo.ultimoMantenimientoCambios || "";
 
@@ -2156,9 +2155,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("form-equipo");
     if (!form) return;
 
-    // Limpiar formulario
-    form.reset();
-
     // Quitar modo edición
     equipoEnEdicion = null;
     delete form.dataset.id;
@@ -2172,11 +2168,11 @@ document.addEventListener("DOMContentLoaded", () => {
       btnSubmit.disabled = false;
     }
 
-    /*// Ocultar botón cancelar
+    // Ocultar botón cancelar
     const btnCancelar = form.querySelector(".btn-cancelar");
     if (btnCancelar) {
       btnCancelar.style.display = "none";
-    }*/
+    }
 
     // Reset selects
     document.getElementById("eq-area").innerHTML =
@@ -2186,8 +2182,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("eq-subarea").innerHTML =
       '<option value="">Seleccione subárea</option>';
     document.getElementById("eq-subarea").disabled = true;
+    
+    // Limpiar formulario
+    form.reset();
 
-    cargarEquipos();
+    //cargarEquipos();
   };
 
   // ELIMINAR EQUIPO

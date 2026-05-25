@@ -45,14 +45,14 @@ function calcularProximo(fechaCompra, ultimo) {
   if (ultimo) {
     const ultimoDate = new Date(ultimo);
 
-    // 🟢 CASO 1: Primer mantenimiento (nuevo equipo)
+    //  CASO 1: Primer mantenimiento (nuevo equipo)
     if (ultimoDate.getTime() === compra.getTime()) {
       const primer = new Date(compra);
       primer.setFullYear(primer.getFullYear() + 1);
       return primer;
     }
 
-    // 🔵 CASO 2: Ya tuvo mantenimiento real → +6 meses
+    //  CASO 2: Ya tuvo mantenimiento real → +6 meses
     const siguiente = new Date(ultimoDate);
     siguiente.setMonth(siguiente.getMonth() + 6);
     return siguiente;
