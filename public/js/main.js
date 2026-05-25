@@ -356,84 +356,77 @@ document.addEventListener("DOMContentLoaded", () => {
   /* --------------------------------------------------------------------------
    6.5 RESTABLECER CONTRASEÑA
 -------------------------------------------------------------------------- */
-const formResetPassword = document.getElementById("formResetPassword");
+  const formResetPassword = document.getElementById("formResetPassword");
 
-if (formResetPassword) {
-  formResetPassword.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  if (formResetPassword) {
+    formResetPassword.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const password = document
-      .getElementById("resetPassword")
-      .value.trim();
+      const password = document.getElementById("resetPassword").value.trim();
 
-    const confirmPassword = document
-      .getElementById("confirmPassword")
-      .value.trim();
+      const confirmPassword = document
+        .getElementById("confirmPassword")
+        .value.trim();
 
-    const errorContainer = document.getElementById(
-      "resetPasswordError"
-    );
+      const errorContainer = document.getElementById("resetPasswordError");
 
-    errorContainer.textContent = "";
+      errorContainer.textContent = "";
 
-    if (!password || !confirmPassword) {
-      return (errorContainer.textContent =
-        "Todos los campos son obligatorios");
-    }
-
-    if (password.length < 6) {
-      return (errorContainer.textContent =
-        "La contraseña debe tener mínimo 6 caracteres");
-    }
-
-    if (password !== confirmPassword) {
-      return (errorContainer.textContent =
-        "Las contraseñas no coinciden");
-    }
-
-    try {
-      // Obtener token desde URL
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get("token");
-
-      if (!token) {
+      if (!password || !confirmPassword) {
         return (errorContainer.textContent =
-          "Token inválido o expirado");
+          "Todos los campos son obligatorios");
       }
 
-      const res = await fetch(`${API_BASE}/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          password,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("✅ Contraseña restablecida correctamente");
-
-        formResetPassword.reset();
-
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
-      } else {
-        errorContainer.textContent =
-          data.error || "Error al restablecer contraseña";
+      if (password.length < 6) {
+        return (errorContainer.textContent =
+          "La contraseña debe tener mínimo 6 caracteres");
       }
-    } catch (error) {
-      console.error(error);
 
-      errorContainer.textContent =
-        "Error del servidor, intenta nuevamente";
-    }
-  });
-}
+      if (password !== confirmPassword) {
+        return (errorContainer.textContent = "Las contraseñas no coinciden");
+      }
+
+      try {
+        // Obtener token desde URL
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("token");
+
+        if (!token) {
+          return (errorContainer.textContent = "Token inválido o expirado");
+        }
+
+        const res = await fetch(`${API_BASE}/reset-password`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            password,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("✅ Contraseña restablecida correctamente");
+
+          formResetPassword.reset();
+
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 1500);
+        } else {
+          errorContainer.textContent =
+            data.error || "Error al restablecer contraseña";
+        }
+      } catch (error) {
+        console.error(error);
+
+        errorContainer.textContent = "Error del servidor, intenta nuevamente";
+      }
+    });
+  }
 
   /* --------------------------------------------------------------------------
      7. Logout
@@ -1514,63 +1507,59 @@ if (formResetPassword) {
    GENERAR INFORME MANTENIMIENTOS
 -------------------------------------------------------------------------- */
 
-function initInformeMantenimientos() {
-  const form = document.getElementById("formInformeMantenimientos");
+  function initInformeMantenimientos() {
+    const form = document.getElementById("formInformeMantenimientos");
 
-  if (!form) return;
+    if (!form) return;
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const params = new URLSearchParams(new FormData(form));
+      const params = new URLSearchParams(new FormData(form));
 
-    const url = `/equipos/informe?${params}`;
+      const url = `/equipos/informe?${params}`;
 
-    try {
-      const res = await secureFetch(url, {
-        method: "GET",
-        headers: {
-          Accept:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-      });
+      try {
+        const res = await secureFetch(url, {
+          method: "GET",
+          headers: {
+            Accept:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          },
+        });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const blob = await res.blob();
+
+        const a = document.createElement("a");
+
+        const href = URL.createObjectURL(blob);
+
+        a.href = href;
+
+        const fi = document.getElementById("mantenimiento-fecha-inicio").value;
+
+        const ff = document.getElementById("mantenimiento-fecha-fin").value;
+
+        a.download = `Informe_Mantenimientos_${fi}_a_${ff}.xlsx`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        URL.revokeObjectURL(href);
+      } catch (err) {
+        console.error("❌ Error al descargar informe:", err);
+
+        alert("No se pudo generar el informe.");
       }
-
-      const blob = await res.blob();
-
-      const a = document.createElement("a");
-
-      const href = URL.createObjectURL(blob);
-
-      a.href = href;
-
-      const fi = document.getElementById(
-        "mantenimiento-fecha-inicio"
-      ).value;
-
-      const ff = document.getElementById(
-        "mantenimiento-fecha-fin"
-      ).value;
-
-      a.download = `Informe_Mantenimientos_${fi}_a_${ff}.xlsx`;
-
-      document.body.appendChild(a);
-
-      a.click();
-
-      a.remove();
-
-      URL.revokeObjectURL(href);
-    } catch (err) {
-      console.error("❌ Error al descargar informe:", err);
-
-      alert("No se pudo generar el informe.");
-    }
-  });
-}
+    });
+  }
 
   /* --------------------------------------------------------------------------
      10. Mostrar Tareas
@@ -1697,77 +1686,69 @@ function initInformeMantenimientos() {
   }
 
   function initInformeMantenimientos() {
-  const form = document.getElementById(
-    "formInformeMantenimientos"
-  );
+    const form = document.getElementById("formInformeMantenimientos");
 
-  if (!form) return;
+    if (!form) return;
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    try {
-      const fechaInicio = document.getElementById(
-        "mantenimiento-fecha-inicio"
-      ).value;
+      try {
+        const fechaInicio = document.getElementById(
+          "mantenimiento-fecha-inicio",
+        ).value;
 
-      const fechaFin = document.getElementById(
-        "mantenimiento-fecha-fin"
-      ).value;
+        const fechaFin = document.getElementById(
+          "mantenimiento-fecha-fin",
+        ).value;
 
-      const params = new URLSearchParams();
+        const params = new URLSearchParams();
 
-      if (fechaInicio) {
-        params.append("fechaInicio", fechaInicio);
-      }
+        if (fechaInicio) {
+          params.append("fechaInicio", fechaInicio);
+        }
 
-      if (fechaFin) {
-        params.append("fechaFin", fechaFin);
-      }
+        if (fechaFin) {
+          params.append("fechaFin", fechaFin);
+        }
 
-      const user = JSON.parse(
-        sessionStorage.getItem("user")
-      );
+        const user = JSON.parse(sessionStorage.getItem("user"));
 
-      const res = await fetch(
-        `/equipos/informe?${params.toString()}`,
-        {
+        const res = await fetch(`/equipos/informe?${params.toString()}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${user.sessionToken}`,
           },
+        });
+
+        if (!res.ok) {
+          throw new Error("Error generando informe");
         }
-      );
 
-      if (!res.ok) {
-        throw new Error("Error generando informe");
+        const blob = await res.blob();
+
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+
+        a.href = url;
+
+        a.download = "Informe_Mantenimientos.xlsx";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("❌ Error informe:", err);
+
+        alert("No se pudo generar el informe");
       }
-
-      const blob = await res.blob();
-
-      const url = window.URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-
-      a.href = url;
-
-      a.download = "Informe_Mantenimientos.xlsx";
-
-      document.body.appendChild(a);
-
-      a.click();
-
-      a.remove();
-
-      window.URL.revokeObjectURL(url);
-
-    } catch (err) {
-      console.error("❌ Error informe:", err);
-
-      alert("No se pudo generar el informe");
-    }
-  });
-}
+    });
+  }
 
   // ==================== FORMULARIO EQUIPO ====================
 
@@ -1793,7 +1774,6 @@ function initInformeMantenimientos() {
     const serial = document.getElementById("eq-serial")?.value.trim();
     const placa = document.getElementById("eq-placa")?.value.trim();
     const tipo = document.getElementById("eq-tipo")?.value.trim();
-
     const pisoSel = document.getElementById("eq-piso");
     const areaSel = document.getElementById("eq-area");
     const subSel = document.getElementById("eq-subarea");
@@ -2192,11 +2172,11 @@ function initInformeMantenimientos() {
       btnSubmit.disabled = false;
     }
 
-    // Ocultar botón cancelar
+    /*// Ocultar botón cancelar
     const btnCancelar = form.querySelector(".btn-cancelar");
     if (btnCancelar) {
       btnCancelar.style.display = "none";
-    }
+    }*/
 
     // Reset selects
     document.getElementById("eq-area").innerHTML =
@@ -2283,8 +2263,7 @@ function initInformeMantenimientos() {
       "";
 
     const placa =
-      document.getElementById("filtro-equipo-placa")?.value.toLowerCase() ||
-      "";
+      document.getElementById("filtro-equipo-placa")?.value.toLowerCase() || "";
 
     const estado = document.getElementById("filtro-equipo-estado")?.value || "";
 
