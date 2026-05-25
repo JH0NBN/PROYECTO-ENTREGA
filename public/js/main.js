@@ -1810,7 +1810,8 @@ function initInformeMantenimientos() {
     if (!marca) errores.push("La marca es obligatoria");
     if (!modelo) errores.push("El modelo es obligatorio");
     if (!serial) errores.push("El serial es obligatorio");
-    if (!ubicacion) errores.push("La ubicación es obligatoria");
+    if (!ubicacion.piso) errores.push("El piso es obligatorio");
+    if (!ubicacion.area) errores.push("El área es obligatoria");
     if (!dominio) errores.push("El dominio es obligatorio");
     if (!fechaCompra) errores.push("La fecha de compra es obligatoria");
 
@@ -1899,7 +1900,6 @@ function initInformeMantenimientos() {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = originalText;
       }
     }
 
@@ -2130,7 +2130,9 @@ function initInformeMantenimientos() {
 
     // Seleccionar piso por texto
     const pisoOpt = [...pisoSel.options].find(
-      (o) => o.text === equipo.ubicacion.piso,
+      (o) =>
+        o.text.trim().toLowerCase() ===
+        equipo.ubicacion.piso.trim().toLowerCase(),
     );
     if (!pisoOpt) return;
 
@@ -2139,7 +2141,9 @@ function initInformeMantenimientos() {
 
     // Seleccionar área
     const areaOpt = [...areaSel.options].find(
-      (o) => o.text === equipo.ubicacion.area,
+      (o) =>
+        o.text.trim().toLowerCase() ===
+        equipo.ubicacion.area.trim().toLowerCase(),
     );
     if (!areaOpt) return;
 
@@ -2149,13 +2153,15 @@ function initInformeMantenimientos() {
     // Seleccionar subárea (si existe)
     if (equipo.ubicacion.subarea) {
       const subOpt = [...subSel.options].find(
-        (o) => o.text === equipo.ubicacion.subarea,
+        (o) =>
+          o.text.trim().toLowerCase() ===
+          equipo.ubicacion.subarea.trim().toLowerCase(),
       );
       if (subOpt) subSel.value = subOpt.value;
     }
   }
 
-  document.getElementById("btn-cancelar-equipo")?.classList.remove("hidden");
+  //document.getElementById("btn-cancelar-equipo")?.classList.remove("hidden");
 
   // CANCELAR EDICIÓN EQUIPO
 
