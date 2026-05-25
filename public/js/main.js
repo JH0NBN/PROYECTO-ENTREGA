@@ -1,3 +1,5 @@
+let equiposData = [];
+
 document.addEventListener("DOMContentLoaded", () => {
   /* --------------------------------------------------------------------------
      0. Leer usuario de sesión y validación básica
@@ -2182,7 +2184,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("eq-subarea").innerHTML =
       '<option value="">Seleccione subárea</option>';
     document.getElementById("eq-subarea").disabled = true;
-    
+
     // Limpiar formulario
     form.reset();
 
@@ -2533,12 +2535,22 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==================== ESTADÍSTICAS ====================
 
   function actualizarEstadisticas() {
-    const stats = calcularEstadisticas(equiposData);
+    const stats = calcularEstadisticas(equiposData || []);
     mostrarEstadisticas(stats);
   }
+  function calcularEstadisticas(equipos = []) {
+    if (!Array.isArray(equipos)) {
+      console.warn("⚠️ equipos no es un array:", equipos);
+      return {
+        total: 0,
+        vencidos: 0,
+        proximos: 0,
+        alDia: 0,
+      };
+    }
 
-  function calcularEstadisticas(equipos) {
     const hoy = new Date();
+
     let vencidos = 0;
     let proximos = 0;
     let alDia = 0;
@@ -2555,7 +2567,12 @@ document.addEventListener("DOMContentLoaded", () => {
       else alDia++;
     });
 
-    return { total: equipos.length, vencidos, proximos, alDia };
+    return {
+      total: equipos.length,
+      vencidos,
+      proximos,
+      alDia,
+    };
   }
 
   function mostrarEstadisticas(stats) {
