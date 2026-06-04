@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   -------------------------------------------------------------------------- */
   const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
   const path = location.pathname;
-  const isAuthPage = path.endsWith("/login") || path.endsWith("/registro") || path.endsWith("/reset-password");
+  const isAuthPage = path.endsWith("/login") || path.endsWith("/registro") || path.endsWith("/reset-password") || path.endsWith("/forgot-password");
   const maxSessionTime = 30 * 60 * 1000;
 
   if (currentUser.id) {

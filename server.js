@@ -59,17 +59,23 @@ app.get("/registro", (req, res) => {
 app.get("/reset-password", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "reset-password.html"));
 });
+app.get("/forgot-password", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "forgot-password.html"));
+});
 app.use(mongoSanitize());
 app.use(async (req, res, next) => {
   const publicRoutes = [
     "/",
     "/login",
     "/registro",
+    "/forgot-password",
+    "/reset-password",
     "/favicon.ico",
     "/index.html",
     "/login.html",
     "/registro.html",
     "/reset-password.html",
+    "/forgot-password.html",
   ];
 
   if (
