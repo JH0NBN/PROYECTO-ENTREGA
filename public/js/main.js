@@ -1,12 +1,13 @@
 let equiposData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
+
   /* --------------------------------------------------------------------------
      0. Leer usuario de sesión y validación básica
   -------------------------------------------------------------------------- */
   const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
   const path = location.pathname;
-  const isAuthPage = path.endsWith("/login") || path.endsWith("/registro");
+  const isAuthPage = path.endsWith("/login") || path.endsWith("/registro") || path.endsWith("/reset-password");
   const maxSessionTime = 30 * 60 * 1000;
 
   if (currentUser.id) {
@@ -411,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         if (res.ok) {
-          alert("✅ Contraseña restablecida correctamente");
+          alert("Contraseña restablecida correctamente");
 
           formResetPassword.reset();
 
@@ -1381,10 +1382,10 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ username: nuevo }),
       });
       if (!res.ok) throw new Error();
-      alert("✅ Nombre actualizado");
+      alert(" Nombre actualizado");
       cargarUsuarios();
     } catch {
-      alert("❌ No se pudo actualizar el usuario");
+      alert(" No se pudo actualizar el usuario");
     }
   };
 
@@ -1422,15 +1423,15 @@ document.addEventListener("DOMContentLoaded", () => {
         method: "PUT",
       });
       if (!res.ok) throw new Error();
-      alert(`✅ Usuario ${accion}do`);
+      alert(` Usuario ${accion}do`);
       cargarUsuarios();
     } catch {
-      alert(`❌ Error al ${accion} usuario`);
+      alert(` Error al ${accion} usuario`);
     }
   };
 
   /* --------------------------------------------------------------------------
-     16. Generar Informe
+     16. Generar Informe ACTIVIDADES
   -------------------------------------------------------------------------- */
 
   const track = document.querySelector(".carousel-track");
@@ -1499,28 +1500,24 @@ document.addEventListener("DOMContentLoaded", () => {
         a.remove();
         URL.revokeObjectURL(href);
       } catch (err) {
-        console.error("❌ Error al descargar Excel:", err);
+        console.error("Error al descargar Excel:", err);
         alert("No se pudo generar el informe. Intenta de nuevo.");
       }
     });
   }
 
   /* --------------------------------------------------------------------------
-   GENERAR INFORME MANTENIMIENTOS
--------------------------------------------------------------------------- */
+     17. Generar Informe MANTENIMIENTOS
+  -------------------------------------------------------------------------- */
 
   function initInformeMantenimientos() {
     const form = document.getElementById("formInformeMantenimientos");
 
     if (!form) return;
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const params = new URLSearchParams(new FormData(form));
-
       const url = `/equipos/informe?${params}`;
-
       try {
         const res = await secureFetch(url, {
           method: "GET",
@@ -1529,35 +1526,22 @@ document.addEventListener("DOMContentLoaded", () => {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           },
         });
-
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
-
         const blob = await res.blob();
-
         const a = document.createElement("a");
-
         const href = URL.createObjectURL(blob);
-
         a.href = href;
-
         const fi = document.getElementById("mantenimiento-fecha-inicio").value;
-
         const ff = document.getElementById("mantenimiento-fecha-fin").value;
-
         a.download = `Informe_Mantenimientos_${fi}_a_${ff}.xlsx`;
-
         document.body.appendChild(a);
-
         a.click();
-
         a.remove();
-
         URL.revokeObjectURL(href);
       } catch (err) {
-        console.error("❌ Error al descargar informe:", err);
-
+        console.error("Error al descargar informe:", err);
         alert("No se pudo generar el informe.");
       }
     });
@@ -1633,7 +1617,7 @@ document.addEventListener("DOMContentLoaded", () => {
     contenedor.innerHTML = "";
 
     if (pendientes.length === 0) {
-      contenedor.innerHTML = `<li>✅ No hay tareas pendientes</li>`;
+      contenedor.innerHTML = `<li> No hay tareas pendientes</li>`;
       return;
     }
 
@@ -1745,7 +1729,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         window.URL.revokeObjectURL(url);
       } catch (err) {
-        console.error("❌ Error informe:", err);
+        console.error(" Error informe:", err);
 
         alert("No se pudo generar el informe");
       }
@@ -1764,7 +1748,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const form = document.getElementById("form-equipo");
     if (!form) {
-      console.error("❌ Formulario no encontrado");
+      console.error(" Formulario no encontrado");
       return false;
     }
 
@@ -1802,7 +1786,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return false;
     }
 
-    console.log("📅 Fecha compra value:", fechaCompra);
+    console.log(" Fecha compra value:", fechaCompra);
 
     // ===== PAYLOAD =====
     const payload = {
@@ -1822,7 +1806,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("eq-ult-cambios")?.value.trim() || "",
     };
 
-    console.log("📤 Payload:", payload);
+    console.log(" Payload:", payload);
 
     const id = form.dataset.id;
     const method = id ? "PUT" : "POST";
@@ -1837,7 +1821,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      console.log(`🌐 Enviando: ${method} ${url}`);
+      console.log(` Enviando: ${method} ${url}`);
 
       const res = await secureFetch(url, {
         method,
@@ -1845,7 +1829,7 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify(payload),
       });
 
-      console.log("📥 Respuesta:", res.status);
+      console.log(" Respuesta:", res.status);
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -1877,8 +1861,8 @@ document.addEventListener("DOMContentLoaded", () => {
       await cargarEquipos();
       actualizarEstadisticas();
     } catch (err) {
-      console.error("❌ Error en guardarEquipo:", err);
-      mostrarNotificacion(`❌ ${err.message}`, "error");
+      console.error(" Error en guardarEquipo:", err);
+      mostrarNotificacion(` ${err.message}`, "error");
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -1891,7 +1875,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==================== CARGAR Y RENDERIZAR EQUIPOS ====================
 
   async function cargarEquipos() {
-    console.log("📦 Cargando equipos...");
+    console.log(" Cargando equipos...");
 
     const tbody = document.getElementById("tbl-equipos");
     if (!tbody) return;
@@ -1910,7 +1894,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       });
 
-      console.log("📥 Respuesta equipos:", res.status);
+      console.log(" Respuesta equipos:", res.status);
 
       if (!res.ok) {
         throw new Error(`Error ${res.status}`);
@@ -1923,11 +1907,11 @@ document.addEventListener("DOMContentLoaded", () => {
       renderEquipos(equiposData);
       actualizarEstadisticas();
     } catch (err) {
-      console.error("❌ Error cargando equipos:", err);
+      console.error(" Error cargando equipos:", err);
       tbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align:center; color:#ef4444;">
-          ❌ Error cargando equipos: ${err.message}
+           Error cargando equipos: ${err.message}
         </td>
       </tr>
     `;
@@ -2152,7 +2136,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.stopPropagation();
     }
 
-    console.log("🚫 Edición de equipo cancelada");
+    console.log(" Edición de equipo cancelada");
 
     const form = document.getElementById("form-equipo");
     if (!form) return;
@@ -2194,10 +2178,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // ELIMINAR EQUIPO
   async function eliminarEquipo(id, nombre) {
     const confirmar = confirm(
-      `🗑️ Eliminar equipo\n\n` +
+      ` Eliminar equipo\n\n` +
         `Vas a eliminar el siguiente equipo:\n` +
         `"${nombre}"\n\n` +
-        `⚠️ Esta acción es permanente y no se puede deshacer.\n\n` +
+        ` Esta acción es permanente y no se puede deshacer.\n\n` +
         `¿Deseas continuar?`,
     );
 
@@ -2323,11 +2307,11 @@ document.addEventListener("DOMContentLoaded", () => {
   function bindFormPlan() {
     if (document.__planBound) return;
 
-    console.log("✅ bindFormPlan (delegado) ACTIVADO");
+    console.log(" bindFormPlan (delegado) ACTIVADO");
 
     document.addEventListener("submit", (e) => {
       if (e.target && e.target.id === "form-plan-mensual") {
-        console.log("📨 submit capturado (delegado)");
+        console.log(" submit capturado (delegado)");
         generarPlanMensual(e);
       }
     });
@@ -2381,7 +2365,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log("🚀 generar PlanMensual EJECUTADA");
+    console.log(" generar PlanMensual EJECUTADA");
 
     const year = parseInt(document.getElementById("plan-year").value, 10);
     const month = parseInt(document.getElementById("plan-month").value, 10);
@@ -2420,7 +2404,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       );
 
-      console.log("📥 Respuesta servidor:", res.status);
+      console.log(" Respuesta servidor:", res.status);
 
       const data = await res.json();
 
@@ -2428,7 +2412,7 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(data.error || "Error al generar plan");
       }
 
-      console.log("📊 Plan generado:", data);
+      console.log("Plan generado:", data);
 
       mostrarResumenPlan(data, month, year);
       mostrarNotificacion("Plan mensual generado correctamente", "success");
@@ -2443,8 +2427,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } catch {}
     } catch (err) {
-      console.error("❌ Error al generar plan:", err);
-      mostrarNotificacion(`❌ ${err.message}`, "error");
+      console.error(" Error al generar plan:", err);
+      mostrarNotificacion(` ${err.message}`, "error");
     } finally {
       btnSubmit.disabled = false;
       btnSubmit.textContent = textoOriginal;

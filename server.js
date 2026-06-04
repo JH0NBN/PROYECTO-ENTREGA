@@ -56,6 +56,9 @@ app.get("/login", (req, res) => {
 app.get("/registro", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "registro.html"));
 });
+app.get("/reset-password", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "reset-password.html"));
+});
 app.use(mongoSanitize());
 app.use(async (req, res, next) => {
   const publicRoutes = [
@@ -66,6 +69,7 @@ app.use(async (req, res, next) => {
     "/index.html",
     "/login.html",
     "/registro.html",
+    "/reset-password.html",
   ];
 
   if (
@@ -456,11 +460,6 @@ app.post("/forgot-password", async (req, res) => {
     const resetUrl = `${req.protocol}://${req.get(
       "host"
     )}/reset-password?token=${resetToken}`;
-
-    /*
-      AQUÍ ENVÍAS EL CORREO
-      Ejemplo con nodemailer
-    */
 
     console.log("🔗 Link recuperación:", resetUrl);
 
@@ -990,6 +989,11 @@ app.get("/equipos/informe", async (req, res) => {
         width: 30,
       },
       {
+        header: "Ubicacion",
+        key: "ubicacion",
+        width: 25,
+      },
+      {
         header: "Descripción",
         key: "descripcion",
         width: 45,
@@ -1039,6 +1043,7 @@ app.get("/equipos/informe", async (req, res) => {
       ws.addRow({
         _id: e._id.toString(),
         nombre: e.nombre || "N/A",
+        ubicacion: e.ubicacion || "N/A",
         descripcion: e.descripcion || "N/A",
         estado: e.estado || "N/A",
         usuario: e.usuario?.username || "Sin asignar",
