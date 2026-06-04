@@ -16,7 +16,15 @@ const Equipo = require("./models/Equipo");
 const Ubicacion = require("./models/Ubicacion");
 const { REFUSED } = require("dns");
 const Auditoria = require("./models/Auditoria");
-const {sendMessage,msgProxima,msgVencida,msgNuevaAsignacion,msgReasignacion,msgAmpliacion,msgFinalizada,} = require("./helpers/telegram");
+const {
+  sendMessage,
+  msgProxima,
+  msgVencida,
+  msgNuevaAsignacion,
+  msgReasignacion,
+  msgAmpliacion,
+  msgFinalizada,
+} = require("./helpers/telegram");
 const cron = require("node-cron");
 const { getStatusClass } = require("./helpers/status");
 const { resolve } = require("path/win32");
@@ -92,7 +100,6 @@ app.use(async (req, res, next) => {
   ) {
     return next();
   }
-  
 
   const userId = req.header("x-user-id");
   const sessionToken = req.header("x-session-token");
@@ -346,14 +353,12 @@ app.post("/login", async (req, res) => {
   }
 });
 
-
 // - RESET PASSWORD
 
 const crypto = require("crypto");
 
 app.post("/reset-password", async (req, res) => {
-  const ip =
-    req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
   const ruta = req.originalUrl;
 
@@ -428,8 +433,7 @@ app.post("/reset-password", async (req, res) => {
    FORGOT PASSWORD
 -------------------------------------------------------------------------- */
 app.post("/forgot-password", async (req, res) => {
-  const ip =
-    req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
   const ruta = req.originalUrl;
 
@@ -442,51 +446,130 @@ app.post("/forgot-password", async (req, res) => {
   }
 
   try {
-    const user = await Usuario.findOne({ username });
+    const user = await Usuario.findOne({
+      username,
+    });
 
-    // Respuesta genérica por seguridad
+    // Respuesta genérica
     if (!user) {
       return res.json({
-        message:
-          "Si el usuario existe, se enviarán las instrucciones.",
+        message: "Si el usuario existe, se enviarán las instrucciones.",
       });
     }
 
-    // Generar token
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    if (!user.telegramChatId) {
+      return res.status(400).json({
+        error: "El usuario no tiene Telegram configurado.",
+      });
+    }
 
-    user.resetPasswordToken = resetToken;
+    // Código de 6 dígitos
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Expira en 30 minutos
-    user.resetPasswordExpires = Date.now() + 30 * 60 * 1000;
+    user.resetCode = resetCode;
+
+    user.resetCodeExpires = Date.now() + 10 * 60 * 1000; // 10 minutos
 
     await user.save();
 
-    // URL recuperación
-    const resetUrl = `${req.protocol}://${req.get(
-      "host"
-    )}/reset-password?token=${resetToken}`;
+    // Mensaje Telegram
+    const mensaje =
+      `🔐 Recuperación de contraseña\n\n` +
+      `Hola ${user.username}.\n\n` +
+      `Tu código de verificación es:\n\n` +
+      `${resetCode}\n\n` +
+      `⏳ Este código expira en 10 minutos.\n\n` +
+      `Si no solicitaste este cambio, ignora este mensaje.`;
 
-    console.log("🔗 Link recuperación:", resetUrl);
+    await bot.telegram.sendMessage(user.telegramChatId, mensaje);
 
-    // Auditoría
     await Auditoria.create({
       usuario: user._id,
       accion: "Solicitud recuperación contraseña",
-      descripcion: `El usuario ${user.username} solicitó recuperación de contraseña.`,
+      descripcion: `Código enviado a Telegram para el usuario ${user.username}`,
       ip,
       ruta,
     });
 
     return res.json({
-      message:
-        "Si el usuario existe, se enviarán las instrucciones.",
+      success: true,
+      message: "Si el usuario existe, se enviarán las instrucciones.",
     });
   } catch (err) {
     console.error("❌ Error en POST /forgot-password:", err);
 
     return res.status(500).json({
       error: "Error en el servidor",
+    });
+  }
+});
+
+app.post("/verify-reset-code", async (req, res) => {
+  try {
+    const { username, code } = req.body;
+
+    const user = await Usuario.findOne({
+      username,
+      resetCode: code,
+      resetCodeExpires: {
+        $gt: Date.now(),
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: "Código inválido o expirado",
+      });
+    }
+
+    return res.json({
+      success: true,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      error: "Error del servidor",
+    });
+  }
+});
+
+app.post("/reset-password", async (req, res) => {
+  try {
+    const { username, code, password } = req.body;
+
+    const user = await Usuario.findOne({
+      username,
+      resetCode: code,
+      resetCodeExpires: {
+        $gt: Date.now(),
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: "Código inválido o expirado",
+      });
+    }
+
+    user.password = password;
+
+    user.resetCode = null;
+    user.resetCodeExpires = null;
+
+    user.sessionToken = null;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Contraseña actualizada correctamente",
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      error: "Error del servidor",
     });
   }
 });
@@ -738,16 +821,15 @@ app.get("/equipos/informe", async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="Informe_Mantenimiento.xlsx"`
+      `attachment; filename="Informe_Mantenimiento.xlsx"`,
     );
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     await wb.xlsx.write(res);
     res.end();
-
   } catch (err) {
     console.error("❌ Error informe mantenimiento:", err);
     res.status(500).json({ error: "Error generando informe" });
@@ -760,11 +842,7 @@ app.get("/equipos/informe", async (req, res) => {
 
 app.get("/equipos/informe", async (req, res) => {
   try {
-    const {
-      fechaInicio,
-      fechaFin,
-      estado,
-    } = req.query;
+    const { fechaInicio, fechaFin, estado } = req.query;
 
     /* ----------------------------------------------------------------------
        FILTROS
@@ -781,9 +859,7 @@ app.get("/equipos/informe", async (req, res) => {
       }
 
       if (fechaFin) {
-        filtro.createdAt.$lte = new Date(
-          fechaFin + "T23:59:59"
-        );
+        filtro.createdAt.$lte = new Date(fechaFin + "T23:59:59");
       }
     }
 
@@ -884,9 +960,7 @@ app.get("/equipos/informe", async (req, res) => {
         descripcion: e.descripcion || "N/A",
         estado: e.estado || "N/A",
         usuario: e.usuario?.username || "Sin asignar",
-        fecha: e.createdAt
-          ? new Date(e.createdAt).toLocaleString()
-          : "N/A",
+        fecha: e.createdAt ? new Date(e.createdAt).toLocaleString() : "N/A",
       });
     });
 
@@ -926,18 +1000,17 @@ app.get("/equipos/informe", async (req, res) => {
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=Informe_Mantenimientos.xlsx`
+      `attachment; filename=Informe_Mantenimientos.xlsx`,
     );
 
     await wb.xlsx.write(res);
 
     res.end();
-
   } catch (err) {
     console.error("❌ Error generando informe:", err);
 
@@ -965,9 +1038,7 @@ app.get("/equipos/informe", async (req, res) => {
       }
 
       if (fechaFin) {
-        filtro.createdAt.$lte = new Date(
-          fechaFin + "T23:59:59"
-        );
+        filtro.createdAt.$lte = new Date(fechaFin + "T23:59:59");
       }
     }
 
@@ -1053,9 +1124,7 @@ app.get("/equipos/informe", async (req, res) => {
         descripcion: e.descripcion || "N/A",
         estado: e.estado || "N/A",
         usuario: e.usuario?.username || "Sin asignar",
-        fecha: e.createdAt
-          ? new Date(e.createdAt).toLocaleDateString()
-          : "N/A",
+        fecha: e.createdAt ? new Date(e.createdAt).toLocaleDateString() : "N/A",
       });
     });
 
@@ -1080,12 +1149,12 @@ app.get("/equipos/informe", async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=Informe_Mantenimientos.xlsx`
+      `attachment; filename=Informe_Mantenimientos.xlsx`,
     );
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     await wb.xlsx.write(res);
@@ -1133,7 +1202,6 @@ app.get("/notificaciones", async (req, res) => {
     return res.status(500).json({ error: "Error obteniendo notificaciones" });
   }
 });
-
 
 // - Ampliar fechas
 app.put("/tareas/ampliar-fecha/:id", async (req, res) => {
@@ -1441,7 +1509,6 @@ app.post("/mantenimiento/plan/generar", async (req, res) => {
         titulo: `Mantenimiento equipo con serial ${
           equipo.serial || "N/A"
         } y placa ${placaLimpia || "N/A"}`,
-
 
         descripcion: `Mantenimiento preventivo del equipo con serial ${
           equipo.serial || "N/A"
