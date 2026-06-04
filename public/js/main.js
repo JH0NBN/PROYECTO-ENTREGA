@@ -1,13 +1,16 @@
 let equiposData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-
   /* --------------------------------------------------------------------------
      0. Leer usuario de sesión y validación básica
   -------------------------------------------------------------------------- */
   const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
   const path = location.pathname;
-  const isAuthPage = path.endsWith("/login") || path.endsWith("/registro") || path.endsWith("/reset-password") || path.endsWith("/forgot-password");
+  const isAuthPage =
+    path.endsWith("/login") ||
+    path.endsWith("/registro") ||
+    path.endsWith("/reset-password") ||
+    path.endsWith("/forgot-password");
   const maxSessionTime = 30 * 60 * 1000;
 
   if (currentUser.id) {
@@ -430,6 +433,225 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  /* --------------------------------------------------------------------------
+   6.5 FORGOT PASSWORD
+-------------------------------------------------------------------------- */
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("forgotPasswordForm");
+
+    if (!form) return;
+
+    const errorBox = document.getElementById("forgotPasswordError");
+    const successBox = document.getElementById("forgotPasswordSuccess");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      errorBox.style.display = "none";
+      successBox.style.display = "none";
+
+      const username = document.getElementById("username")?.value.trim();
+
+      if (!username) {
+        errorBox.textContent = "Debes ingresar tu usuario";
+        errorBox.style.display = "block";
+        return;
+      }
+
+      const btn = form.querySelector('button[type="submit"]');
+      const originalText = btn.textContent;
+
+      try {
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+
+        const res = await fetch("/forgot-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "No fue posible procesar la solicitud");
+        }
+
+        successBox.textContent =
+          "Si el usuario existe, se enviarán las instrucciones.";
+
+        successBox.style.display = "block";
+
+        // Guardar usuario temporalmente
+        sessionStorage.setItem("resetUsername", username);
+
+        // Esperar un momento y redirigir
+        setTimeout(() => {
+          window.location.href = "/verify-code";
+        }, 1500);
+      } catch (err) {
+        console.error(err);
+
+        errorBox.textContent = err.message || "Error inesperado";
+
+        errorBox.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const username = sessionStorage.getItem("resetUsername");
+
+    if (!username) {
+      window.location.href = "/forgot-password";
+      return;
+    }
+
+    const form = document.getElementById("verifyCodeForm");
+
+    const errorBox = document.getElementById("verifyError");
+
+    const successBox = document.getElementById("verifySuccess");
+
+    const inputs = document.querySelectorAll(".code-input");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      errorBox.style.display = "none";
+      successBox.style.display = "none";
+
+      const code = [...inputs].map((i) => i.value).join("");
+
+      if (code.length !== 6) {
+        errorBox.textContent = "Ingresa el código completo";
+
+        errorBox.style.display = "block";
+        return;
+      }
+
+      const btn = form.querySelector("button");
+
+      const originalText = btn.textContent;
+
+      try {
+        btn.disabled = true;
+        btn.textContent = "Verificando...";
+
+        const res = await fetch("/verify-reset-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+            code,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Código inválido");
+        }
+
+        successBox.textContent = "Código verificado correctamente";
+
+        successBox.style.display = "block";
+
+        sessionStorage.setItem("resetCode", code);
+
+        setTimeout(() => {
+          window.location.href = "/reset-password";
+        }, 1000);
+      } catch (err) {
+        errorBox.textContent = err.message;
+
+        errorBox.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const username = sessionStorage.getItem("resetUsername");
+
+    const code = sessionStorage.getItem("resetCode");
+
+    if (!username || !code) {
+      window.location.href = "/forgot-password";
+      return;
+    }
+
+    const form = document.getElementById("formResetPassword");
+
+    const errorBox = document.getElementById("resetPasswordError");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const password = document.getElementById("resetPassword").value;
+
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      if (password !== confirmPassword) {
+        errorBox.textContent = "Las contraseñas no coinciden";
+
+        return;
+      }
+
+      const btn = form.querySelector('button[type="submit"]');
+
+      const originalText = btn.textContent;
+
+      try {
+        btn.disabled = true;
+        btn.textContent = "Actualizando...";
+
+        const res = await fetch("/reset-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+            code,
+            password,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
+        }
+
+        alert("Contraseña actualizada correctamente");
+
+        sessionStorage.removeItem("resetUsername");
+
+        sessionStorage.removeItem("resetCode");
+
+        window.location.href = "/login";
+      } catch (err) {
+        errorBox.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  });
 
   /* --------------------------------------------------------------------------
      7. Logout
