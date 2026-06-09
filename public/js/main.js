@@ -10,7 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
     path.endsWith("/login") ||
     path.endsWith("/registro") ||
     path.endsWith("/reset-password") ||
-    path.endsWith("/forgot-password");
+    path.endsWith("/forgot-password") ||
+    path.endsWith("/user-forgot-password");
   const maxSessionTime = 30 * 60 * 1000;
 
   if (currentUser.id) {
