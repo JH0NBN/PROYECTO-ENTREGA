@@ -1733,7 +1733,7 @@ document.addEventListener("DOMContentLoaded", () => {
    INFORME MANTENIMIENTOS
 -------------------------------------------------------------------------- */
 
-  /*function initInformeMantenimientos() {
+  function initInformeMantenimientos() {
     const form = document.getElementById("formInformeMantenimientos");
 
     if (!form) return;
@@ -1790,7 +1790,7 @@ document.addEventListener("DOMContentLoaded", () => {
         alert("No fue posible generar el informe.");
       }
     });
-  }*/
+  }
   /* --------------------------------------------------------------------------
      10. Mostrar Tareas
   -------------------------------------------------------------------------- */
@@ -1944,7 +1944,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const user = JSON.parse(sessionStorage.getItem("user"));
 
-        const res = await fetch(`/equipos/informe?${params.toString()}`, {
+        const res = await fetch(`/mantenimientos/informe?${params.toString()}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${user.sessionToken}`,
