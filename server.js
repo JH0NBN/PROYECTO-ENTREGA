@@ -844,7 +844,7 @@ app.get("/equipos/informe", async (req, res) => {
    INFORME MANTENIMIENTOS
 -------------------------------------------------------------------------- */
 
-app.get("/equipos/informe", async (req, res) => {
+app.get("/mantenimientos/informe", async (req, res) => {
   try {
     const { fechaInicio, fechaFin, tipo, piso, area } = req.query;
 

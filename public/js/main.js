@@ -1744,7 +1744,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const params = new URLSearchParams(new FormData(form));
 
-        const res = await secureFetch(`/equipos/informe?${params.toString()}`, {
+        const res = await secureFetch(`/mantenimientos/informe?${params.toString()}`, {
           method: "GET",
           headers: {
             Accept:
