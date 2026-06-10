@@ -845,14 +845,11 @@ app.get("/equipos/informe", async (req, res) => {
 -------------------------------------------------------------------------- */
 
 app.get("/mantenimientos/informe", async (req, res) => {
+  console.log("Entro a /equipos/informes");
   try {
     const { fechaInicio, fechaFin, tipo, piso, area } = req.query;
 
     const filtro = {};
-
-    /* --------------------------------------------------
-       FILTRO FECHAS
-    -------------------------------------------------- */
 
     if (fechaInicio || fechaFin) {
       filtro.ultimoMantenimientoFecha = {};
@@ -865,26 +862,12 @@ app.get("/mantenimientos/informe", async (req, res) => {
         filtro.ultimoMantenimientoFecha.$lte = new Date(fechaFin + "T23:59:59");
       }
     }
-
-    /* --------------------------------------------------
-       FILTRO TIPO
-    -------------------------------------------------- */
-
     if (tipo) {
       filtro.tipo = tipo;
     }
-
-    /* --------------------------------------------------
-       FILTRO PISO
-    -------------------------------------------------- */
-
     if (piso) {
       filtro["ubicacion.piso"] = piso;
     }
-
-    /* --------------------------------------------------
-       FILTRO AREA
-    -------------------------------------------------- */
 
     if (area) {
       filtro["ubicacion.area"] = area;
