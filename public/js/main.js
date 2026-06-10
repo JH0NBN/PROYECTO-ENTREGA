@@ -1733,7 +1733,7 @@ document.addEventListener("DOMContentLoaded", () => {
    INFORME MANTENIMIENTOS
 -------------------------------------------------------------------------- */
 
-  function initInformeMantenimientos() {
+  /*function initInformeMantenimientos() {
     const form = document.getElementById("formInformeMantenimientos");
 
     if (!form) return;
@@ -1790,7 +1790,7 @@ document.addEventListener("DOMContentLoaded", () => {
         alert("No fue posible generar el informe.");
       }
     });
-  }
+  }*/
   /* --------------------------------------------------------------------------
      10. Mostrar Tareas
   -------------------------------------------------------------------------- */
@@ -1902,7 +1902,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return list;
   }
 
-  /*
+  // ================== MANTENIMIENTO  ==================
 
   async function initMantenimiento() {
     if (initMantenimiento.__iniciado) return;
@@ -1978,7 +1978,7 @@ document.addEventListener("DOMContentLoaded", () => {
         alert("No se pudo generar el informe");
       }
     });
-  }*/
+  }
 
   // ==================== FORMULARIO EQUIPO ====================
 
