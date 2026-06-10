@@ -846,198 +846,193 @@ app.get("/equipos/informe", async (req, res) => {
 
 app.get("/equipos/informe", async (req, res) => {
   try {
-    const { fechaInicio, fechaFin, estado } = req.query;
-
-    /* ----------------------------------------------------------------------
-       FILTROS
-    ---------------------------------------------------------------------- */
+    const { fechaInicio, fechaFin, tipo, piso, area } = req.query;
 
     const filtro = {};
 
+    /* --------------------------------------------------
+       FILTRO FECHAS
+    -------------------------------------------------- */
+
     if (fechaInicio || fechaFin) {
-      filtro.createdAt = {};
+      filtro.ultimoMantenimientoFecha = {};
 
       if (fechaInicio) {
-        filtro.createdAt.$gte = new Date(fechaInicio);
+        filtro.ultimoMantenimientoFecha.$gte = new Date(fechaInicio);
       }
 
       if (fechaFin) {
-        filtro.createdAt.$lte = new Date(`${fechaFin}T23:59:59`);
+        filtro.ultimoMantenimientoFecha.$lte = new Date(fechaFin + "T23:59:59");
       }
     }
 
-    if (estado) {
-      filtro.estado = estado;
+    /* --------------------------------------------------
+       FILTRO TIPO
+    -------------------------------------------------- */
+
+    if (tipo) {
+      filtro.tipo = tipo;
     }
 
-    /* ----------------------------------------------------------------------
-       CONSULTA
-    ---------------------------------------------------------------------- */
+    /* --------------------------------------------------
+       FILTRO PISO
+    -------------------------------------------------- */
+
+    if (piso) {
+      filtro["ubicacion.piso"] = piso;
+    }
+
+    /* --------------------------------------------------
+       FILTRO AREA
+    -------------------------------------------------- */
+
+    if (area) {
+      filtro["ubicacion.area"] = area;
+    }
 
     const equipos = await Equipo.find(filtro)
-      .populate("usuario", "username")
-      .sort({ createdAt: -1 })
+      .populate("ultimoMantenimientoPor", "username")
+      .sort({
+        ultimoMantenimientoFecha: -1,
+      })
       .lean();
-
-    /* ----------------------------------------------------------------------
-       EXCEL
-    ---------------------------------------------------------------------- */
 
     const wb = new ExcelJS.Workbook();
 
-    wb.creator = "Sistema";
-    wb.created = new Date();
-
     const ws = wb.addWorksheet("Mantenimientos");
-
-    /* ----------------------------------------------------------------------
-       COLUMNAS
-    ---------------------------------------------------------------------- */
 
     ws.columns = [
       {
-        header: "ID",
-        key: "_id",
-        width: 28,
+        header: "Marca",
+        key: "marca",
       },
       {
-        header: "Equipo",
-        key: "nombre",
-        width: 30,
+        header: "Modelo",
+        key: "modelo",
       },
       {
-        header: "Ubicación",
-        key: "ubicacion",
-        width: 25,
+        header: "Serial",
+        key: "serial",
       },
+      {
+        header: "Placa",
+        key: "placa",
+      },
+      {
+        header: "Tipo",
+        key: "tipo",
+      },
+
+      {
+        header: "Piso",
+        key: "piso",
+      },
+      {
+        header: "Área",
+        key: "area",
+      },
+      {
+        header: "Subárea",
+        key: "subarea",
+      },
+
+      {
+        header: "Dominio",
+        key: "dominio",
+      },
+
       {
         header: "Descripción",
         key: "descripcion",
-        width: 45,
       },
+
       {
-        header: "Estado",
-        key: "estado",
-        width: 20,
+        header: "Fecha Compra",
+        key: "fechaCompra",
       },
+
       {
-        header: "Analista",
-        key: "usuario",
-        width: 25,
+        header: "Último Mantenimiento",
+        key: "ultimoMantenimiento",
       },
+
       {
-        header: "Fecha Creación",
-        key: "fecha",
-        width: 25,
+        header: "Realizado Por",
+        key: "mantenimientoPor",
+      },
+
+      {
+        header: "Próximo Mantenimiento",
+        key: "proximoMantenimiento",
+      },
+
+      {
+        header: "Observaciones",
+        key: "cambios",
       },
     ];
-
-    /* ----------------------------------------------------------------------
-       ESTILO HEADER
-    ---------------------------------------------------------------------- */
-
-    const headerRow = ws.getRow(1);
-
-    headerRow.font = {
-      bold: true,
-      color: { argb: "FFFFFF" },
-      size: 12,
-    };
-
-    headerRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "2563EB" },
-    };
-
-    headerRow.alignment = {
-      vertical: "middle",
-      horizontal: "center",
-    };
-
-    headerRow.height = 22;
-
-    /* ----------------------------------------------------------------------
-       DATOS
-    ---------------------------------------------------------------------- */
 
     equipos.forEach((e) => {
       ws.addRow({
-        _id: e._id.toString(),
-        nombre: e.nombre || "N/A",
-        ubicacion: e.ubicacion || "N/A",
-        descripcion: e.descripcion || "N/A",
-        estado: e.estado || "N/A",
-        usuario: e.usuario?.username || "Sin asignar",
-        fecha: e.createdAt
-          ? new Date(e.createdAt).toLocaleString("es-CO")
-          : "N/A",
+        marca: e.marca || "",
+        modelo: e.modelo || "",
+        serial: e.serial || "",
+        placa: e.placa || "",
+        tipo: e.tipo || "",
+
+        piso: e.ubicacion?.piso || "",
+        area: e.ubicacion?.area || "",
+        subarea: e.ubicacion?.subarea || "",
+
+        dominio: e.dominio || "",
+
+        descripcion: e.descripcion || "",
+
+        fechaCompra: e.fechaCompra
+          ? new Date(e.fechaCompra).toLocaleDateString("es-CO")
+          : "",
+
+        ultimoMantenimiento: e.ultimoMantenimientoFecha
+          ? new Date(e.ultimoMantenimientoFecha).toLocaleDateString("es-CO")
+          : "Nunca",
+
+        mantenimientoPor: e.ultimoMantenimientoPor?.username || "Sin registro",
+
+        proximoMantenimiento: e.proximoMantenimiento
+          ? new Date(e.proximoMantenimiento).toLocaleDateString("es-CO")
+          : "",
+
+        cambios: e.ultimoMantenimientoCambios || "",
       });
     });
 
-    /* ----------------------------------------------------------------------
-       BORDES Y FORMATO
-    ---------------------------------------------------------------------- */
+    ws.columns.forEach((col) => {
+      let max = col.header.length;
 
-    ws.eachRow((row) => {
-      row.eachCell((cell) => {
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        const value = (cell.value || "").toString();
 
-        cell.alignment = {
-          vertical: "middle",
-          horizontal: "left",
-          wrapText: true,
-        };
+        max = Math.max(max, value.length);
       });
+
+      col.width = max + 2;
     });
-
-    /* ----------------------------------------------------------------------
-       FILTROS EXCEL
-    ---------------------------------------------------------------------- */
-
-    ws.autoFilter = {
-      from: "A1",
-      to: "G1",
-    };
-
-    /* ----------------------------------------------------------------------
-       CONGELAR CABECERA
-    ---------------------------------------------------------------------- */
-
-    ws.views = [
-      {
-        state: "frozen",
-        ySplit: 1,
-      },
-    ];
-
-    /* ----------------------------------------------------------------------
-       RESPONSE
-    ---------------------------------------------------------------------- */
-
-    const fechaActual = new Date().toISOString().split("T")[0];
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=Informe_Mantenimientos_${fechaActual}.xlsx`
+      `attachment; filename="Informe_Mantenimientos.xlsx"`,
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     await wb.xlsx.write(res);
 
     res.end();
-
   } catch (err) {
-    console.error("❌ Error generando informe:", err);
+    console.error("❌ Error informe mantenimientos:", err);
 
     res.status(500).json({
       error: "Error generando informe",

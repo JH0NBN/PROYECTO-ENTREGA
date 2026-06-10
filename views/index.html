@@ -344,420 +344,447 @@
           <button type="submit">Descargar Excel</button>
         </form>
 
-        <h1>Informe de Mantenimiento</h1>
+        <section id="informe-mantenimientos-section" class="content-section">
+          <h1>Informe de Mantenimientos</h1>
 
-        <form id="formInformes" class="task-form">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="informe-fecha-inicio">Fecha Inicio:</label>
-              <input type="date" id="informe-fecha-inicio" name="fechaInicio" required>
+          <form id="formInformeMantenimientos" class="task-form">
+            <div class="form-grid">
+
+              <div class="form-group">
+                <label for="mantenimiento-fecha-inicio">
+                  Fecha Inicio
+                </label>
+                <input type="date" id="mantenimiento-fecha-inicio" name="fechaInicio" required>
+              </div>
+
+              <div class="form-group">
+                <label for="mantenimiento-fecha-fin">
+                  Fecha Fin
+                </label>
+                <input type="date" id="mantenimiento-fecha-fin" name="fechaFin" required>
+              </div>
+
+              <div class="form-group">
+                <label for="informe-tipo">
+                  Tipo de Equipo
+                </label>
+
+                <select id="informe-tipo" name="tipo">
+                  <option value="">Todos</option>
+                  <option value="Portátil">Portátil</option>
+                  <option value="Desktop">Desktop</option>
+                  <option value="Impresora">Impresora</option>
+                  <option value="Servidor">Servidor</option>
+                  <option value="Switch">Switch</option>
+                  <option value="Router">Router</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="informe-piso">
+                  Piso
+                </label>
+
+                <input type="text" id="informe-piso" name="piso" placeholder="Todos">
+              </div>
+
+              <div class="form-group">
+                <label for="informe-area">
+                  Área
+                </label>
+
+                <input type="text" id="informe-area" name="area" placeholder="Todas">
+              </div>
+
             </div>
+
+            <button type="submit">
+              Descargar Excel
+            </button>
+          </form>
+        </section>
+
+        <!-- REASIGNAR TAREA -->
+        <section id="reasignar-tarea" class="section hidden">
+          <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+          <h1>Reasignar Actividad</h1>
+          <form id="formReasignar" class="task-form">
             <div class="form-group">
-              <label for="informe-fecha-fin">Fecha Fin:</label>
-              <input type="date" id="informe-fecha-fin" name="fechaFin" required>
-            </div>
-            <div class="form-group">
-              <label for="informe-analista">Equipos:</label>
-              <select id="informe-analista" name="analista">
-                <option value="">Todos los equipos</option>
-                <!-- opciones dinámicas -->
+              <label for="reasignar-analista">Nuevo Analista:</label>
+              <select id="reasignar-analista" name="analista" required>
+                <option value="">Seleccione un analista</option>
               </select>
             </div>
+            <input type="hidden" id="reasignar-fechaLimite" name="fechaLimite" />
             <div class="form-group">
-              <label for="informe-estado">Estado:</label>
-              <select id="informe-estado" name="estado">
-                <option value="">Todos los estados</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="En Progreso">En Progreso</option>
-                <option value="Finalizado">Finalizado</option>
-              </select>
+              <label>Fecha Límite:</label>
+              <input type="text" id="display-reasignar-fechaLimite" class="form-control" readonly />
             </div>
-          </div>
-          <button type="submit">Descargar Excel</button>
-        </form>
-      </section>
-
-      <!-- REASIGNAR TAREA -->
-      <section id="reasignar-tarea" class="section hidden">
-        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
-        <h1>Reasignar Actividad</h1>
-        <form id="formReasignar" class="task-form">
-          <div class="form-group">
-            <label for="reasignar-analista">Nuevo Analista:</label>
-            <select id="reasignar-analista" name="analista" required>
-              <option value="">Seleccione un analista</option>
-            </select>
-          </div>
-          <input type="hidden" id="reasignar-fechaLimite" name="fechaLimite" />
-          <div class="form-group">
-            <label>Fecha Límite:</label>
-            <input type="text" id="display-reasignar-fechaLimite" class="form-control" readonly />
-          </div>
-          <div class="form-group">
-            <label for="reasignar-observacion">Observación (mínimo 100 caracteres)::</label>
-            <textarea id="reasignar-observacion" name="observacion" rows="2" placeholder=""></textarea>
-            <div id="contador-observacion-reasignar">0 / 100</div>
-          </div>
-          <button type="submit">Confirmar Reasignación</button>
-        </form>
-      </section>
-
-      <!-- FINALIZAR TAREA -->
-      <div id="modal-terminar-tarea" class="modal hidden">
-        <div class="modal-content">
-          <h2>Finalizar Tarea</h2>
-          <p>Por favor, escribe una observación sobre lo realizado (mínimo 100 caracteres):</p>
-
-          <textarea id="obs-finalizar" rows="4" placeholder="Escribe aquí..." required></textarea>
-          <div id="contador-finalizar">0 / mínimo 100</div>
-
-          <div class="modal-actions">
-            <button id="btnCancelarFinalizar" class="btn btn-cancelar">Cancelar</button>
-            <button id="btnConfirmarFinalizar" class="btn btn-guardar" disabled>Finalizar</button>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- DETALLES TAREA -->
-      <section id="detalles-tarea" class="section hidden">
-        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
-        <h1>Detalles de la Actividad</h1>
-        <form class="task-form">
-          <div class="form-group"><label>Actividad:</label><input id="detalles-titulo" readonly /></div>
-          <div class="form-group"><label>Descripción:</label><textarea id="detalles-descripcion" rows="3"
-              readonly></textarea></div>
-          <div class="form-group"><label>Fecha y Hora:</label><input id="detalles-fechaHora" readonly /></div>
-          <div class="form-group"><label>Analista:</label><input id="detalles-analista" readonly /></div>
-          <div class="form-group"><label>Fecha Límite:</label><input id="detalles-fechaLimite" readonly /></div>
-          <div class="form-group"><label>Ticket:</label><input id="detalles-ticket" readonly /></div>
-          <div class="form-group"><label>Placa:</label><input id="detalles-placa" readonly /></div>
-          <div class="form-group"><label>Observación:</label><textarea id="detalles-observacion" rows="2"
-              readonly></textarea></div>
-          <div class="form-group"><label>Estado:</label><input id="detalles-estado" readonly /></div>
-        </form>
-        <h2>Historial de Cambios</h2>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Acción</th>
-                <th>Analista Anterior</th>
-                <th>Analista Nuevo</th>
-                <th>Fecha Cambio</th>
-                <th>Nuevo Límite</th>
-                <th>Observación</th>
-              </tr>
-            </thead>
-            <tbody id="listaHistorial"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="control-usuario" class="section hidden"></section>
-      <section id="informes" class="section hidden"></section>
-
-      <!-- ==================== SECCIÓN INVENTARIO ==================== -->
-      <section id="inventario" class="section hidden">
-        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
-        <h1>Inventario de Equipos de Cómputo</h1>
-
-        <!-- Estadísticas -->
-        <div id="stats-equipos"></div>
-
-        <!-- Filtros -->
-        <div class="filtros-equipos">
-          <h3>Filtrar Equipos</h3>
-
-          <div class="filtros-equipos-grid">
-
             <div class="form-group">
-              <label>Nombre</label>
-              <input type="text" id="filtro-equipo-nombre" placeholder="Buscar por nombre..." />
+              <label for="reasignar-observacion">Observación (mínimo 100 caracteres)::</label>
+              <textarea id="reasignar-observacion" name="observacion" rows="2" placeholder=""></textarea>
+              <div id="contador-observacion-reasignar">0 / 100</div>
             </div>
+            <button type="submit">Confirmar Reasignación</button>
+          </form>
+        </section>
 
-            <div class="form-group">
-              <label>Serial</label>
-              <input type="text" id="filtro-equipo-serial" placeholder="Buscar por serial..." />
-            </div>
+        <!-- FINALIZAR TAREA -->
+        <div id="modal-terminar-tarea" class="modal hidden">
+          <div class="modal-content">
+            <h2>Finalizar Tarea</h2>
+            <p>Por favor, escribe una observación sobre lo realizado (mínimo 100 caracteres):</p>
 
-            <div class="form-group">
-              <label>Placa</label>
-              <input type="text" id="filtro-equipo-placa" placeholder="Buscar por placa..." />
-            </div>
+            <textarea id="obs-finalizar" rows="4" placeholder="Escribe aquí..." required></textarea>
+            <div id="contador-finalizar">0 / mínimo 100</div>
 
-            <div class="form-group">
-              <label>Estado</label>
-              <select id="filtro-equipo-estado">
-                <option value="">Todos los estados</option>
-                <option value="vencido">Mantenimiento Vencido</option>
-                <option value="proximo">Próximos 30 días</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="filtro-piso">Piso</label>
-              <select id="filtro-piso" required>
-                <option value="">Seleccione piso</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="filtro-area">Área</label>
-              <select id="filtro-area" disabled required>
-                <option value="">Seleccione área</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="filtro-subarea">Subárea</label>
-              <select id="filtro-subarea" disabled>
-                <option value="">Seleccione subárea (opcional)</option>
-              </select>
+            <div class="modal-actions">
+              <button id="btnCancelarFinalizar" class="btn btn-cancelar">Cancelar</button>
+              <button id="btnConfirmarFinalizar" class="btn btn-guardar" disabled>Finalizar</button>
             </div>
           </div>
         </div>
 
-        <!-- Formulario de Equipo -->
-        <form id="form-equipo" class="task-form">
-          <h3>Agregar / Editar Equipo</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="eq-marca">Marca <span style="color:red;">*</span></label>
-              <input id="eq-marca" type="text" required placeholder="" />
-            </div>
 
-            <div class="form-group">
-              <label for="eq-modelo">Modelo <span style="color:red;">*</span></label>
-              <input id="eq-modelo" type="text" required placeholder="" />
-            </div>
-
-            <div class="form-group">
-              <label for="eq-serial">Serial <span style="color:red;">*</span></label>
-              <input id="eq-serial" type="text" required placeholder="" />
-            </div>
-
-            <div class="form-group">
-              <label for="eq-placa">Placa</label>
-              <input id="eq-placa" type="text" placeholder="" />
-            </div>
-
-            <div class="form-group">
-              <label for="eq-tipo">Tipo de equipo</label>
-              <select id="eq-tipo" required>
-                <option value="">Seleccione un tipo</option>
-                <option value="Computador">Computador</option>
-                <option value="Portátil">Portátil</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="eq-piso">Piso</label>
-              <select id="eq-piso" required>
-                <option value="">Seleccione piso</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="eq-area">Área</label>
-              <select id="eq-area" disabled required>
-                <option value="">Seleccione área</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="eq-subarea">Subárea</label>
-              <select id="eq-subarea" disabled>
-                <option value="">Seleccione subárea (opcional)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="eq-dominio">Nombre<span style="color:red;">*</span></label>
-              <input id="eq-dominio" type="text" required "" />
-            </div>
-
-            <div class="form-group">
-              <label for="eq-compra">Fecha de Compra<span style="color:red;">*</span></label>
-              <input id="eq-compra" type="date" required />
-            </div>
-
-            <div class="form-group">
-              <label for="eq-ult-fecha">Fecha Último Mantenimiento<span style="color:red;">*</span></label>
-              <input id="eq-ult-fecha" type="date" required />
-            </div>
-
-            <div class="form-group" style="grid-column: 1/-1;">
-              <label for="eq-ult-cambios">Cambios Realizados</label>
-              <textarea id="eq-ult-cambios" rows="3"
-                placeholder="Describe los cambios, repuestos o mantenimientos realizados..."></textarea>
-            </div>
+        <!-- DETALLES TAREA -->
+        <section id="detalles-tarea" class="section hidden">
+          <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+          <h1>Detalles de la Actividad</h1>
+          <form class="task-form">
+            <div class="form-group"><label>Actividad:</label><input id="detalles-titulo" readonly /></div>
+            <div class="form-group"><label>Descripción:</label><textarea id="detalles-descripcion" rows="3"
+                readonly></textarea></div>
+            <div class="form-group"><label>Fecha y Hora:</label><input id="detalles-fechaHora" readonly /></div>
+            <div class="form-group"><label>Analista:</label><input id="detalles-analista" readonly /></div>
+            <div class="form-group"><label>Fecha Límite:</label><input id="detalles-fechaLimite" readonly /></div>
+            <div class="form-group"><label>Ticket:</label><input id="detalles-ticket" readonly /></div>
+            <div class="form-group"><label>Placa:</label><input id="detalles-placa" readonly /></div>
+            <div class="form-group"><label>Observación:</label><textarea id="detalles-observacion" rows="2"
+                readonly></textarea></div>
+            <div class="form-group"><label>Estado:</label><input id="detalles-estado" readonly /></div>
+          </form>
+          <h2>Historial de Cambios</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Acción</th>
+                  <th>Analista Anterior</th>
+                  <th>Analista Nuevo</th>
+                  <th>Fecha Cambio</th>
+                  <th>Nuevo Límite</th>
+                  <th>Observación</th>
+                </tr>
+              </thead>
+              <tbody id="listaHistorial"></tbody>
+            </table>
           </div>
+        </section>
 
-          <button type="submit">Agregar Equipo</button>
-          <button type="button" class="btn-cancelar" style="display:none" onclick="cancelarEdicionEquipo(event)">
-            Cancelar
-          </button>
-        </form>
+        <section id="control-usuario" class="section hidden"></section>
+        <section id="informes" class="section hidden"></section>
 
-        <!-- Tabla de Equipos -->
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Equipo</th>
-                <th>Serial / Placa</th>
-                <th>Ubicación</th>
-                <th>Dominio</th>
-                <th>Fecha Compra</th>
-                <th>Próx. Mantenimiento</th>
-                <th>Último Mantenimiento</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tbl-equipos">
-              <tr>
-                <td colspan="6" style="text-align:center;">Cargando equipos...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <!-- ==================== SECCIÓN INVENTARIO ==================== -->
+        <section id="inventario" class="section hidden">
+          <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+          <h1>Inventario de Equipos de Cómputo</h1>
 
-      <!-- ==================== SECCIÓN PLAN DE MANTENIMIENTO ==================== -->
-      <section id="plan-mantenimiento" class="section hidden">
-        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
-        <h1>Plan Mensual de Mantenimiento</h1>
+          <!-- Estadísticas -->
+          <div id="stats-equipos"></div>
 
-        <!-- Formulario Generar Plan -->
-        <form id="form-plan-mensual" class="task-form plan-form">
-          <h3>Generar Plan Mensual</h3>
-          <div class="form-grid">
-            <!-- Año -->
-            <div class="form-group">
-              <label for="plan-year">Año</label>
-              <input type="number" id="plan-year" min="2000" max="2100" required />
-            </div>
+          <!-- Filtros -->
+          <div class="filtros-equipos">
+            <h3>Filtrar Equipos</h3>
 
-            <!-- Mes -->
-            <div class="form-group">
-              <label for="plan-month">Mes</label>
-              <select id="plan-month" required>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-              </select>
-            </div>
+            <div class="filtros-equipos-grid">
 
-            <!-- Analistas -->
-            <div class="form-group">
-              <label>Analistas</label>
-              <div class="multi-select" id="plan-analistas" tabindex="0">
-                <div class="multi-select-header">
-                  <span id="analistas-label">Seleccionar analistas</span>
-                  <span class="material-icons">expand_more</span>
-                </div>
-                <div class="multi-select-options">
-                  <!-- Analistas dinámicos -->
-                </div>
+              <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="filtro-equipo-nombre" placeholder="Buscar por nombre..." />
+              </div>
+
+              <div class="form-group">
+                <label>Serial</label>
+                <input type="text" id="filtro-equipo-serial" placeholder="Buscar por serial..." />
+              </div>
+
+              <div class="form-group">
+                <label>Placa</label>
+                <input type="text" id="filtro-equipo-placa" placeholder="Buscar por placa..." />
+              </div>
+
+              <div class="form-group">
+                <label>Estado</label>
+                <select id="filtro-equipo-estado">
+                  <option value="">Todos los estados</option>
+                  <option value="vencido">Mantenimiento Vencido</option>
+                  <option value="proximo">Próximos 30 días</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="filtro-piso">Piso</label>
+                <select id="filtro-piso" required>
+                  <option value="">Seleccione piso</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="filtro-area">Área</label>
+                <select id="filtro-area" disabled required>
+                  <option value="">Seleccione área</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="filtro-subarea">Subárea</label>
+                <select id="filtro-subarea" disabled>
+                  <option value="">Seleccione subárea (opcional)</option>
+                </select>
               </div>
             </div>
           </div>
-          <!-- Botón -->
-          <button type="submit" class="btn-primary">
-            Generar Plan Mensual
-          </button>
-        </form>
 
-        <!-- Resumen del Plan Generado -->
-        <div id="plan-resumen" style="display:none;"></div>
-      </section>
+          <!-- Formulario de Equipo -->
+          <form id="form-equipo" class="task-form">
+            <h3>Agregar / Editar Equipo</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="eq-marca">Marca <span style="color:red;">*</span></label>
+                <input id="eq-marca" type="text" required placeholder="" />
+              </div>
 
-      <!-- =========================
+              <div class="form-group">
+                <label for="eq-modelo">Modelo <span style="color:red;">*</span></label>
+                <input id="eq-modelo" type="text" required placeholder="" />
+              </div>
+
+              <div class="form-group">
+                <label for="eq-serial">Serial <span style="color:red;">*</span></label>
+                <input id="eq-serial" type="text" required placeholder="" />
+              </div>
+
+              <div class="form-group">
+                <label for="eq-placa">Placa</label>
+                <input id="eq-placa" type="text" placeholder="" />
+              </div>
+
+              <div class="form-group">
+                <label for="eq-tipo">Tipo de equipo</label>
+                <select id="eq-tipo" required>
+                  <option value="">Seleccione un tipo</option>
+                  <option value="Computador">Computador</option>
+                  <option value="Portátil">Portátil</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-piso">Piso</label>
+                <select id="eq-piso" required>
+                  <option value="">Seleccione piso</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-area">Área</label>
+                <select id="eq-area" disabled required>
+                  <option value="">Seleccione área</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-subarea">Subárea</label>
+                <select id="eq-subarea" disabled>
+                  <option value="">Seleccione subárea (opcional)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="eq-dominio">Nombre<span style="color:red;">*</span></label>
+                <input id="eq-dominio" type="text" required "" />
+              </div>
+
+              <div class="form-group">
+                <label for="eq-compra">Fecha de Compra<span style="color:red;">*</span></label>
+                <input id="eq-compra" type="date" required />
+              </div>
+
+              <div class="form-group">
+                <label for="eq-ult-fecha">Fecha Último Mantenimiento<span style="color:red;">*</span></label>
+                <input id="eq-ult-fecha" type="date" required />
+              </div>
+
+              <div class="form-group" style="grid-column: 1/-1;">
+                <label for="eq-ult-cambios">Cambios Realizados</label>
+                <textarea id="eq-ult-cambios" rows="3"
+                  placeholder="Describe los cambios, repuestos o mantenimientos realizados..."></textarea>
+              </div>
+            </div>
+
+            <button type="submit">Agregar Equipo</button>
+            <button type="button" class="btn-cancelar" style="display:none" onclick="cancelarEdicionEquipo(event)">
+              Cancelar
+            </button>
+          </form>
+
+          <!-- Tabla de Equipos -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Serial / Placa</th>
+                  <th>Ubicación</th>
+                  <th>Dominio</th>
+                  <th>Fecha Compra</th>
+                  <th>Próx. Mantenimiento</th>
+                  <th>Último Mantenimiento</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-equipos">
+                <tr>
+                  <td colspan="6" style="text-align:center;">Cargando equipos...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==================== SECCIÓN PLAN DE MANTENIMIENTO ==================== -->
+        <section id="plan-mantenimiento" class="section hidden">
+          <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+          <h1>Plan Mensual de Mantenimiento</h1>
+
+          <!-- Formulario Generar Plan -->
+          <form id="form-plan-mensual" class="task-form plan-form">
+            <h3>Generar Plan Mensual</h3>
+            <div class="form-grid">
+              <!-- Año -->
+              <div class="form-group">
+                <label for="plan-year">Año</label>
+                <input type="number" id="plan-year" min="2000" max="2100" required />
+              </div>
+
+              <!-- Mes -->
+              <div class="form-group">
+                <label for="plan-month">Mes</label>
+                <select id="plan-month" required>
+                  <option value="1">Enero</option>
+                  <option value="2">Febrero</option>
+                  <option value="3">Marzo</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Mayo</option>
+                  <option value="6">Junio</option>
+                  <option value="7">Julio</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12">Diciembre</option>
+                </select>
+              </div>
+
+              <!-- Analistas -->
+              <div class="form-group">
+                <label>Analistas</label>
+                <div class="multi-select" id="plan-analistas" tabindex="0">
+                  <div class="multi-select-header">
+                    <span id="analistas-label">Seleccionar analistas</span>
+                    <span class="material-icons">expand_more</span>
+                  </div>
+                  <div class="multi-select-options">
+                    <!-- Analistas dinámicos -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Botón -->
+            <button type="submit" class="btn-primary">
+              Generar Plan Mensual
+            </button>
+          </form>
+
+          <!-- Resumen del Plan Generado -->
+          <div id="plan-resumen" style="display:none;"></div>
+        </section>
+
+        <!-- =========================
         ADMINISTRACIÓN
       ========================= -->
 
-      <section id="administracion" class="section hidden">
-        <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
-        <h1>⚙️ Administración de Ubicaciones</h1>
+        <section id="administracion" class="section hidden">
+          <button class="back-btn" onclick="manejarBotonVolver()">← Volver</button>
+          <h1>⚙️ Administración de Ubicaciones</h1>
 
-        <div class="admin-grid">
+          <div class="admin-grid">
 
-          <!-- ================= PISOS ================= -->
-          <div class="admin-card">
-            <h3>🏢 Crear Piso</h3>
-            <div class="form-group">
-              <input type="text" id="nuevo-piso" placeholder="Nombre del piso" />
+            <!-- ================= PISOS ================= -->
+            <div class="admin-card">
+              <h3>🏢 Crear Piso</h3>
+              <div class="form-group">
+                <input type="text" id="nuevo-piso" placeholder="Nombre del piso" />
+              </div>
+              <button onclick="crearPiso()">Agregar Piso</button>
             </div>
-            <button onclick="crearPiso()">Agregar Piso</button>
+
+            <!-- ================= ÁREAS ================= -->
+            <div class="admin-card">
+              <h3>📂 Crear Área</h3>
+
+              <div class="form-group">
+                <label>Seleccionar Piso</label>
+                <select id="admin-piso-area">
+                  <option value="">Seleccione piso</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <input type="text" id="nueva-area" placeholder="Nombre del área" />
+              </div>
+
+              <button onclick="crearArea()">Agregar Área</button>
+            </div>
+
+            <!-- ================= SUBÁREAS ================= -->
+            <div class="admin-card">
+              <h3>📁 Crear Subárea</h3>
+
+              <div class="form-group">
+                <label>Seleccionar Piso</label>
+                <select id="admin-piso-subarea">
+                  <option value="">Seleccione piso</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Seleccionar Área</label>
+                <select id="admin-area-subarea" disabled>
+                  <option value="">Seleccione área</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <input type="text" id="nueva-subarea" placeholder="Nombre de subárea" />
+              </div>
+
+              <button onclick="crearSubarea()">Agregar Subárea</button>
+            </div>
+
           </div>
 
-          <!-- ================= ÁREAS ================= -->
-          <div class="admin-card">
-            <h3>📂 Crear Área</h3>
-
-            <div class="form-group">
-              <label>Seleccionar Piso</label>
-              <select id="admin-piso-area">
-                <option value="">Seleccione piso</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <input type="text" id="nueva-area" placeholder="Nombre del área" />
-            </div>
-
-            <button onclick="crearArea()">Agregar Área</button>
+          <!-- ================= LISTADO ACTUAL ================= -->
+          <div class="admin-listado">
+            <h2>📋 Estructura Actual</h2>
+            <div id="estructura-ubicaciones"></div>
           </div>
 
-          <!-- ================= SUBÁREAS ================= -->
-          <div class="admin-card">
-            <h3>📁 Crear Subárea</h3>
-
-            <div class="form-group">
-              <label>Seleccionar Piso</label>
-              <select id="admin-piso-subarea">
-                <option value="">Seleccione piso</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>Seleccionar Área</label>
-              <select id="admin-area-subarea" disabled>
-                <option value="">Seleccione área</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <input type="text" id="nueva-subarea" placeholder="Nombre de subárea" />
-            </div>
-
-            <button onclick="crearSubarea()">Agregar Subárea</button>
-          </div>
-
-        </div>
-
-        <!-- ================= LISTADO ACTUAL ================= -->
-        <div class="admin-listado">
-          <h2>📋 Estructura Actual</h2>
-          <div id="estructura-ubicaciones"></div>
-        </div>
-
-      </section>
+        </section>
 
 
-      <!-- Scripts -->
-      <link rel="stylesheet" href="/css/styles.css">
-      <script src="/js/main.js" defer></script>
+        <!-- Scripts -->
+        <link rel="stylesheet" href="/css/styles.css">
+        <script src="/js/main.js" defer></script>
 
 
 </body>

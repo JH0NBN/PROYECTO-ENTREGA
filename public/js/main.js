@@ -1730,46 +1730,67 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* --------------------------------------------------------------------------
-     17. Generar Informe MANTENIMIENTOS
-  -------------------------------------------------------------------------- */
+   INFORME MANTENIMIENTOS
+-------------------------------------------------------------------------- */
 
   function initInformeMantenimientos() {
     const form = document.getElementById("formInformeMantenimientos");
 
     if (!form) return;
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const params = new URLSearchParams(new FormData(form));
-      const url = `/equipos/informe?${params}`;
+
       try {
-        const res = await secureFetch(url, {
+        const params = new URLSearchParams(new FormData(form));
+
+        const res = await secureFetch(`/equipos/informe?${params.toString()}`, {
           method: "GET",
           headers: {
             Accept:
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           },
         });
+
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+          throw new Error(`Error HTTP ${res.status}`);
         }
+
         const blob = await res.blob();
+
+        const href = window.URL.createObjectURL(blob);
+
         const a = document.createElement("a");
-        const href = URL.createObjectURL(blob);
+
+        const fechaInicio = document.getElementById(
+          "mantenimiento-fecha-inicio",
+        ).value;
+
+        const fechaFin = document.getElementById(
+          "mantenimiento-fecha-fin",
+        ).value;
+
         a.href = href;
-        const fi = document.getElementById("mantenimiento-fecha-inicio").value;
-        const ff = document.getElementById("mantenimiento-fecha-fin").value;
-        a.download = `Informe_Mantenimientos_${fi}_a_${ff}.xlsx`;
+
+        a.download =
+          fechaInicio && fechaFin
+            ? `Informe_Mantenimientos_${fechaInicio}_a_${fechaFin}.xlsx`
+            : "Informe_Mantenimientos.xlsx";
+
         document.body.appendChild(a);
+
         a.click();
+
         a.remove();
+
         URL.revokeObjectURL(href);
-      } catch (err) {
-        console.error("Error al descargar informe:", err);
-        alert("No se pudo generar el informe.");
+      } catch (error) {
+        console.error("Error generando informe:", error);
+
+        alert("No fue posible generar el informe.");
       }
     });
   }
-
   /* --------------------------------------------------------------------------
      10. Mostrar Tareas
   -------------------------------------------------------------------------- */
@@ -3003,4 +3024,5 @@ document.addEventListener("DOMContentLoaded", () => {
   bindFiltrosEquipos();
   calcularEstadisticas();
   initMantenimiento();
+  initInformeMantenimientos();
 });
