@@ -1902,7 +1902,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return list;
   }
 
-  // ================== MANTENIMIENTO  ==================
+  /*
 
   async function initMantenimiento() {
     if (initMantenimiento.__iniciado) return;
@@ -1978,7 +1978,7 @@ document.addEventListener("DOMContentLoaded", () => {
         alert("No se pudo generar el informe");
       }
     });
-  }
+  }*/
 
   // ==================== FORMULARIO EQUIPO ====================
 
