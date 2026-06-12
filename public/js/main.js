@@ -1911,7 +1911,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bindFormPlan?.();
     bindFiltrosEquipos?.();
 
-    await cargarEquipos();
+    //await cargarEquipos();
     actualizarEstadisticas?.();
   }
 
