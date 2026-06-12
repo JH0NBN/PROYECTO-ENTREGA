@@ -195,6 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===== MOSTRAR SECCIÓN
   window.mostrarSeccion = async function (id) {
+    console.count(`mostrarSeccion(${id})`);
     __baseMostrarSeccion(id);
 
     // INFORMES
@@ -218,35 +219,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function bindUbicacionesEquipos() {
+      if (document.__ubicacionesEquiposBound) return;
+
       const piso = document.getElementById("eq-piso");
       const area = document.getElementById("eq-area");
 
       if (!piso || !area) return;
 
       piso.addEventListener("change", (e) => {
-        console.log("📍 Piso cambiado:", e.target.value);
         cargarAreas(e.target.value);
       });
 
       area.addEventListener("change", (e) => {
-        console.log("🏢 Área cambiada:", e.target.value);
         cargarSubareas(e.target.value);
       });
+
+      document.__ubicacionesEquiposBound = true;
     }
 
     // EQUIPOS
     if (id === "inventario") {
       try {
-        //bindFormEquipo?.();
+        await cargarPisos();
+        await cargarPisosFiltros();
 
-        requestAnimationFrame(async () => {
-          await cargarPisos();
-          await cargarPisosFiltros();
-          bindUbicacionesEquipos?.();
-          //cargarEquipos?.();
-        });
+        bindUbicacionesEquipos();
+        bindFiltrosEquipos();
 
-        bindFiltrosEquipos?.();
+        await cargarEquipos();
       } catch (e) {
         console.error("Error equipos:", e);
       }
@@ -1744,13 +1744,16 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const params = new URLSearchParams(new FormData(form));
 
-        const res = await secureFetch(`/mantenimientos/informe?${params.toString()}`, {
-          method: "GET",
-          headers: {
-            Accept:
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        const res = await secureFetch(
+          `/mantenimientos/informe?${params.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              Accept:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            },
           },
-        });
+        );
 
         if (!res.ok) {
           throw new Error(`Error HTTP ${res.status}`);
@@ -2350,7 +2353,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Limpiar formulario
     form.reset();
-
   };
 
   // ELIMINAR EQUIPO
@@ -2386,6 +2388,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==================== FILTROS DE EQUIPOS ====================
 
   function bindFiltrosEquipos() {
+    if (document.__filtrosEquiposBound) return;
+
     const filtroNombre = document.getElementById("filtro-equipo-nombre");
     const filtroSerial = document.getElementById("filtro-equipo-serial");
     const filtroPlaca = document.getElementById("filtro-equipo-placa");
@@ -2414,6 +2418,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (filtroSubarea)
       filtroSubarea.addEventListener("change", aplicarFiltrosEquipos);
+
+    document.__filtrosEquiposBound = true;
   }
 
   function aplicarFiltrosEquipos() {
