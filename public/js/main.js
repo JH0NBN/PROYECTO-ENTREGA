@@ -243,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
           await cargarPisos();
           await cargarPisosFiltros();
           bindUbicacionesEquipos?.();
-          cargarEquipos?.();
+          //cargarEquipos?.();
         });
 
         bindFiltrosEquipos?.();
@@ -2351,7 +2351,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Limpiar formulario
     form.reset();
 
-    //cargarEquipos();
   };
 
   // ELIMINAR EQUIPO
@@ -2485,8 +2484,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function bindFormPlan() {
     if (document.__planBound) return;
-
-    console.log(" bindFormPlan (delegado) ACTIVADO");
 
     document.addEventListener("submit", (e) => {
       if (e.target && e.target.id === "form-plan-mensual") {
