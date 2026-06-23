@@ -439,11 +439,9 @@ document.addEventListener("DOMContentLoaded", () => {
    6.5 FORGOT PASSWORD
 -------------------------------------------------------------------------- */
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("forgotPasswordForm");
+  const form = document.getElementById("forgotPasswordForm");
 
-    if (!form) return;
-
+  if (form) {
     const errorBox = document.getElementById("forgotPasswordError");
     const successBox = document.getElementById("forgotPasswordSuccess");
 
@@ -489,10 +487,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         successBox.style.display = "block";
 
-        // Guardar usuario temporalmente
         sessionStorage.setItem("resetUsername", username);
 
-        // Esperar un momento y redirigir
         setTimeout(() => {
           window.location.href = "/verify-code";
         }, 1500);
@@ -500,159 +496,146 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error(err);
 
         errorBox.textContent = err.message || "Error inesperado";
-
         errorBox.style.display = "block";
       } finally {
         btn.disabled = false;
         btn.textContent = originalText;
       }
     });
-  });
+  }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const username = sessionStorage.getItem("resetUsername");
+  const username = sessionStorage.getItem("resetUsername");
 
-    if (!username) {
-      window.location.href = "/forgot-password";
-      return;
-    }
-
+  if (!username) {
+    window.location.href = "/forgot-password";
+  } else {
     const form = document.getElementById("verifyCodeForm");
-
     const errorBox = document.getElementById("verifyError");
-
     const successBox = document.getElementById("verifySuccess");
-
     const inputs = document.querySelectorAll(".code-input");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      errorBox.style.display = "none";
-      successBox.style.display = "none";
+        errorBox.style.display = "none";
+        successBox.style.display = "none";
 
-      const code = [...inputs].map((i) => i.value).join("");
+        const code = [...inputs].map((i) => i.value).join("");
 
-      if (code.length !== 6) {
-        errorBox.textContent = "Ingresa el código completo";
-
-        errorBox.style.display = "block";
-        return;
-      }
-
-      const btn = form.querySelector("button");
-
-      const originalText = btn.textContent;
-
-      try {
-        btn.disabled = true;
-        btn.textContent = "Verificando...";
-
-        const res = await fetch("/verify-reset-code", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username,
-            code,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Código inválido");
+        if (code.length !== 6) {
+          errorBox.textContent = "Ingresa el código completo";
+          errorBox.style.display = "block";
+          return;
         }
 
-        successBox.textContent = "Código verificado correctamente";
+        const btn = form.querySelector("button");
+        const originalText = btn.textContent;
 
-        successBox.style.display = "block";
+        try {
+          btn.disabled = true;
+          btn.textContent = "Verificando...";
 
-        sessionStorage.setItem("resetCode", code);
+          const res = await fetch("/verify-reset-code", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              username,
+              code,
+            }),
+          });
 
-        setTimeout(() => {
-          window.location.href = "/reset-password";
-        }, 1000);
-      } catch (err) {
-        errorBox.textContent = err.message;
+          const data = await res.json();
 
-        errorBox.style.display = "block";
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-    });
-  });
+          if (!res.ok) {
+            throw new Error(data.error || "Código inválido");
+          }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const username = sessionStorage.getItem("resetUsername");
+          successBox.textContent = "Código verificado correctamente";
+          successBox.style.display = "block";
 
-    const code = sessionStorage.getItem("resetCode");
+          sessionStorage.setItem("resetCode", code);
 
-    if (!username || !code) {
-      window.location.href = "/forgot-password";
-      return;
+          setTimeout(() => {
+            window.location.href = "/reset-password";
+          }, 1000);
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.style.display = "block";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
     }
+  }
 
+  const username = sessionStorage.getItem("resetUsername");
+  const code = sessionStorage.getItem("resetCode");
+
+  if (!username || !code) {
+    window.location.href = "/forgot-password";
+  } else {
     const form = document.getElementById("formResetPassword");
-
     const errorBox = document.getElementById("resetPasswordError");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      const password = document.getElementById("resetPassword").value;
+        const password = document.getElementById("resetPassword").value;
+        const confirmPassword =
+          document.getElementById("confirmPassword").value;
 
-      const confirmPassword = document.getElementById("confirmPassword").value;
+        errorBox.textContent = "";
 
-      if (password !== confirmPassword) {
-        errorBox.textContent = "Las contraseñas no coinciden";
-
-        return;
-      }
-
-      const btn = form.querySelector('button[type="submit"]');
-
-      const originalText = btn.textContent;
-
-      try {
-        btn.disabled = true;
-        btn.textContent = "Actualizando...";
-
-        const res = await fetch("/reset-password", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username,
-            code,
-            password,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error);
+        if (password !== confirmPassword) {
+          errorBox.textContent = "Las contraseñas no coinciden";
+          return;
         }
 
-        alert("Contraseña actualizada correctamente");
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
 
-        sessionStorage.removeItem("resetUsername");
+        try {
+          btn.disabled = true;
+          btn.textContent = "Actualizando...";
 
-        sessionStorage.removeItem("resetCode");
+          const res = await fetch("/reset-password", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              username,
+              code,
+              password,
+            }),
+          });
 
-        window.location.href = "/login";
-      } catch (err) {
-        errorBox.textContent = err.message;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-    });
-  });
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.error);
+          }
+
+          alert("Contraseña actualizada correctamente");
+
+          sessionStorage.removeItem("resetUsername");
+          sessionStorage.removeItem("resetCode");
+
+          window.location.href = "/login";
+        } catch (err) {
+          errorBox.textContent = err.message;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+    }
+  }
 
   /* --------------------------------------------------------------------------
      7. Logout
@@ -2951,7 +2934,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   mostrarSeccion("inicio");
-  cargarEquipos();
+  /*();
   bindUbicacionesEquipo();
   cargarPisos();
   cargarAreas();
@@ -2962,5 +2945,5 @@ document.addEventListener("DOMContentLoaded", () => {
   bindFiltrosEquipos();
   calcularEstadisticas();
   initMantenimiento();
-  initInformeMantenimientos();
+  initInformeMantenimientos();*/
 });
