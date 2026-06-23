@@ -439,130 +439,65 @@ document.addEventListener("DOMContentLoaded", () => {
    6.5 FORGOT PASSWORD
 -------------------------------------------------------------------------- */
 
-  const form = document.getElementById("forgotPasswordForm");
+  {
+    const forgotForm = document.getElementById("forgotPasswordForm");
 
-  if (form) {
-    const errorBox = document.getElementById("forgotPasswordError");
-    const successBox = document.getElementById("forgotPasswordSuccess");
+    if (forgotForm) {
+      const errorBox = document.getElementById("forgotPasswordError");
+      const successBox = document.getElementById("forgotPasswordSuccess");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      errorBox.style.display = "none";
-      successBox.style.display = "none";
-
-      const username = document.getElementById("username")?.value.trim();
-
-      if (!username) {
-        errorBox.textContent = "Debes ingresar tu usuario";
-        errorBox.style.display = "block";
-        return;
-      }
-
-      const btn = form.querySelector('button[type="submit"]');
-      const originalText = btn.textContent;
-
-      try {
-        btn.disabled = true;
-        btn.textContent = "Enviando...";
-
-        const res = await fetch("/forgot-password", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "No fue posible procesar la solicitud");
-        }
-
-        successBox.textContent =
-          "Si el usuario existe, se enviarán las instrucciones.";
-
-        successBox.style.display = "block";
-
-        sessionStorage.setItem("resetUsername", username);
-
-        setTimeout(() => {
-          window.location.href = "/verify-code";
-        }, 1500);
-      } catch (err) {
-        console.error(err);
-
-        errorBox.textContent = err.message || "Error inesperado";
-        errorBox.style.display = "block";
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-    });
-  }
-
-  const username = sessionStorage.getItem("resetUsername");
-
-  if (!username) {
-    window.location.href = "/forgot-password";
-  } else {
-    const form = document.getElementById("verifyCodeForm");
-    const errorBox = document.getElementById("verifyError");
-    const successBox = document.getElementById("verifySuccess");
-    const inputs = document.querySelectorAll(".code-input");
-
-    if (form) {
-      form.addEventListener("submit", async (e) => {
+      forgotForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         errorBox.style.display = "none";
         successBox.style.display = "none";
 
-        const code = [...inputs].map((i) => i.value).join("");
+        const forgotUsername = document.getElementById("username")?.value.trim();
 
-        if (code.length !== 6) {
-          errorBox.textContent = "Ingresa el código completo";
+        if (!forgotUsername) {
+          errorBox.textContent = "Debes ingresar tu usuario";
           errorBox.style.display = "block";
           return;
         }
 
-        const btn = form.querySelector("button");
+        const btn = forgotForm.querySelector('button[type="submit"]');
         const originalText = btn.textContent;
 
         try {
           btn.disabled = true;
-          btn.textContent = "Verificando...";
+          btn.textContent = "Enviando...";
 
-          const res = await fetch("/verify-reset-code", {
+          const res = await fetch("/forgot-password", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              username,
-              code,
+              username: forgotUsername,
             }),
           });
 
           const data = await res.json();
 
           if (!res.ok) {
-            throw new Error(data.error || "Código inválido");
+            throw new Error(data.error || "No fue posible procesar la solicitud");
           }
 
-          successBox.textContent = "Código verificado correctamente";
+          successBox.textContent =
+            "Si el usuario existe, se enviarán las instrucciones.";
+
           successBox.style.display = "block";
 
-          sessionStorage.setItem("resetCode", code);
+          sessionStorage.setItem("resetUsername", forgotUsername);
 
           setTimeout(() => {
-            window.location.href = "/reset-password";
-          }, 1000);
+            window.location.href = "/verify-code";
+          }, 1500);
         } catch (err) {
-          errorBox.textContent = err.message;
+          console.error(err);
+
+          errorBox.textContent = err.message || "Error inesperado";
+
           errorBox.style.display = "block";
         } finally {
           btn.disabled = false;
@@ -572,68 +507,147 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  const username = sessionStorage.getItem("resetUsername");
-  const code = sessionStorage.getItem("resetCode");
+  {
+    const verifyUsername = sessionStorage.getItem("resetUsername");
+    const verifyCodeForm = document.getElementById("verifyCodeForm");
 
-  if (!username || !code) {
-    window.location.href = "/forgot-password";
-  } else {
-    const form = document.getElementById("formResetPassword");
-    const errorBox = document.getElementById("resetPasswordError");
+    if (verifyCodeForm) {
+      if (!verifyUsername) {
+        window.location.href = "/forgot-password";
+      } else {
+        const form = verifyCodeForm;
+        const errorBox = document.getElementById("verifyError");
+        const successBox = document.getElementById("verifySuccess");
+        const inputs = document.querySelectorAll(".code-input");
 
-    if (form) {
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+        form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-        const password = document.getElementById("resetPassword").value;
-        const confirmPassword =
-          document.getElementById("confirmPassword").value;
+      errorBox.style.display = "none";
+      successBox.style.display = "none";
 
-        errorBox.textContent = "";
+      const code = [...inputs].map((i) => i.value).join("");
 
-        if (password !== confirmPassword) {
-          errorBox.textContent = "Las contraseñas no coinciden";
-          return;
+      if (code.length !== 6) {
+        errorBox.textContent = "Ingresa el código completo";
+
+        errorBox.style.display = "block";
+        return;
+      }
+
+      const btn = form.querySelector("button");
+
+      const originalText = btn.textContent;
+
+      try {
+        btn.disabled = true;
+        btn.textContent = "Verificando...";
+
+        const res = await fetch("/verify-reset-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: verifyUsername,
+            code,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Código inválido");
         }
 
-        const btn = form.querySelector('button[type="submit"]');
-        const originalText = btn.textContent;
+        successBox.textContent = "Código verificado correctamente";
 
-        try {
-          btn.disabled = true;
-          btn.textContent = "Actualizando...";
+        successBox.style.display = "block";
 
-          const res = await fetch("/reset-password", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              username,
-              code,
-              password,
-            }),
-          });
+        sessionStorage.setItem("resetCode", code);
 
-          const data = await res.json();
+        setTimeout(() => {
+          window.location.href = "/reset-password";
+        }, 1000);
+      } catch (err) {
+        errorBox.textContent = err.message;
 
-          if (!res.ok) {
-            throw new Error(data.error);
-          }
+        errorBox.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+        });
+      }
+    }
+  }
 
-          alert("Contraseña actualizada correctamente");
+  {
+    const resetUsername = sessionStorage.getItem("resetUsername");
+    const resetCode = sessionStorage.getItem("resetCode");
+    const resetForm = document.getElementById("formResetPassword");
 
-          sessionStorage.removeItem("resetUsername");
-          sessionStorage.removeItem("resetCode");
+    if (resetForm) {
+      if (!resetUsername || !resetCode) {
+        window.location.href = "/forgot-password";
+      } else {
+        const form = resetForm;
+        const errorBox = document.getElementById("resetPasswordError");
 
-          window.location.href = "/login";
-        } catch (err) {
-          errorBox.textContent = err.message;
-        } finally {
-          btn.disabled = false;
-          btn.textContent = originalText;
+        form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const password = document.getElementById("resetPassword").value;
+
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      if (password !== confirmPassword) {
+        errorBox.textContent = "Las contraseñas no coinciden";
+
+        return;
+      }
+
+      const btn = form.querySelector('button[type="submit"]');
+
+      const originalText = btn.textContent;
+
+      try {
+        btn.disabled = true;
+        btn.textContent = "Actualizando...";
+
+        const res = await fetch("/reset-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: resetUsername,
+            code: resetCode,
+            password,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
         }
-      });
+
+        alert("Contraseña actualizada correctamente");
+
+        sessionStorage.removeItem("resetUsername");
+
+        sessionStorage.removeItem("resetCode");
+
+        window.location.href = "/login";
+      } catch (err) {
+        errorBox.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+        });
+      }
     }
   }
 
@@ -2934,16 +2948,5 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   mostrarSeccion("inicio");
-  /*();
-  bindUbicacionesEquipo();
-  cargarPisos();
-  cargarAreas();
-  cargarSubareas();
-  cargarPisosFiltros();
-  cargarAreasFiltros();
-  cargarSubareasFiltros();
-  bindFiltrosEquipos();
-  calcularEstadisticas();
-  initMantenimiento();
-  initInformeMantenimientos();*/
+  initInformeMantenimientos();
 });
