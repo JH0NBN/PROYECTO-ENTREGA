@@ -2516,3 +2516,206 @@ button .material-icons {
   padding: 20px;
   border-radius: 10px;
 }
+
+/* ============================================================
+   auth.css — estilos compartidos para páginas de autenticación
+   (user-forgot-password, verify-code, reset-password, login)
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+  background: #f4f7fb;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Tarjeta central */
+.verify-container {
+  width: 100%;
+  max-width: 430px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 40px 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.verify-logo {
+  width: 90px;
+  margin-bottom: 20px;
+}
+
+.verify-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 10px;
+}
+
+.verify-subtitle {
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 28px;
+}
+
+/* Alertas */
+.verify-error {
+  display: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 18px;
+  font-size: 14px;
+}
+
+.verify-success {
+  display: none;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 18px;
+  font-size: 14px;
+}
+
+/* Campo de texto */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.text-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.text-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.text-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Inputs de código (verify-code.html) */
+.code-inputs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.code-input {
+  width: 52px;
+  height: 58px;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.code-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+/* Botón principal */
+.verify-btn {
+  width: 100%;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.verify-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.verify-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Info Telegram */
+.telegram-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+/* Pie de página */
+.verify-footer {
+  margin-top: 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.verify-footer a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.verify-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .verify-container {
+    padding: 28px 18px;
+  }
+
+  .code-input {
+    width: 44px;
+    height: 50px;
+    font-size: 20px;
+  }
+}
