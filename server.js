@@ -73,6 +73,67 @@ app.get("/forgot-password", (req, res) => {
 app.get("/user-forgot-password", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "user-forgot-password.html"));
 });
+
+/* --------------------------------------------------------------------------
+   USER-FORGOT-PASSWORD — envía código de verificación por Telegram
+-------------------------------------------------------------------------- */
+app.post("/user-forgot-password", async (req, res) => {
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const ruta = req.originalUrl;
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: "El usuario es obligatorio" });
+  }
+
+  try {
+    const user = await Usuario.findOne({ username });
+
+    // Respuesta genérica para no revelar si el usuario existe
+    if (!user) {
+      return res.json({ message: "Si el usuario existe, se enviarán las instrucciones." });
+    }
+
+    if (!user.telegramChatId) {
+      return res.status(400).json({
+        error: "El usuario no tiene Telegram configurado. Contacta a un administrador.",
+      });
+    }
+
+    // Generar código de 6 dígitos
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetCode = resetCode;
+    user.resetCodeExpires = Date.now() + 10 * 60 * 1000; // 10 minutos
+    await user.save();
+
+    // Enviar por Telegram igual que las notificaciones de tareas
+    const mensaje =
+      `🔐 *Recuperación de contraseña*\n\n` +
+      `Hola *${user.username}*.\n\n` +
+      `Tu código de verificación es:\n\n` +
+      `📋 *${resetCode}*\n\n` +
+      `⏳ Este código expira en 10 minutos.\n\n` +
+      `Si no solicitaste este cambio, ignora este mensaje.`;
+
+    await sendMessage(user.telegramChatId, mensaje);
+
+    await Auditoria.create({
+      usuario: user._id,
+      accion: "Solicitud recuperación contraseña (usuario)",
+      descripcion: `Código de verificación enviado a Telegram para: ${user.username}`,
+      ip,
+      ruta,
+    });
+
+    return res.json({
+      success: true,
+      message: "Si el usuario existe, se enviarán las instrucciones.",
+    });
+  } catch (err) {
+    console.error("❌ Error en POST /user-forgot-password:", err);
+    return res.status(500).json({ error: "Error en el servidor" });
+  }
+});
 app.use(mongoSanitize());
 app.use(async (req, res, next) => {
   const publicRoutes = [
@@ -80,6 +141,8 @@ app.use(async (req, res, next) => {
     "/login",
     "/registro",
     "/forgot-password",
+    "/user-forgot-password",
+    "/verify-reset-code",
     "/reset-password",
     "/favicon.ico",
     "/index.html",
@@ -481,11 +544,11 @@ app.post("/forgot-password", async (req, res) => {
       `🔐 Recuperación de contraseña\n\n` +
       `Hola ${user.username}.\n\n` +
       `Tu código de verificación es:\n\n` +
-      `${resetCode}\n\n` +
+      `*${resetCode}*\n\n` +
       `⏳ Este código expira en 10 minutos.\n\n` +
       `Si no solicitaste este cambio, ignora este mensaje.`;
 
-    await bot.telegram.sendMessage(user.telegramChatId, mensaje);
+    await sendMessage(user.telegramChatId, mensaje);
 
     await Auditoria.create({
       usuario: user._id,
@@ -556,7 +619,14 @@ app.post("/reset-password", async (req, res) => {
       });
     }
 
-    user.password = password;
+    const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    if (!regex.test(password)) {
+      return res.status(400).json({
+        error: "La contraseña debe tener ≥8 caracteres, incluir letra, número y carácter especial.",
+      });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
 
     user.resetCode = null;
     user.resetCodeExpires = null;
